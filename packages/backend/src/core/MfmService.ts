@@ -478,7 +478,7 @@ export class MfmService {
 
 			search: (node) => {
 				const a = doc.createElement('a');
-				a.setAttribute('href', `https://www.google.com/search?q=${node.props.query}`);
+				a.setAttribute('href', `https://duckduckgo.com/?q=${node.props.query}`);
 				a.textContent = node.props.content;
 				return a;
 			},

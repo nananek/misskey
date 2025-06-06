@@ -79,11 +79,15 @@ import type {
 	AdminQueueDeliverDelayedResponse,
 	AdminQueueInboxDelayedResponse,
 	AdminQueueJobsRequest,
+	AdminQueueJobsResponse,
 	AdminQueuePromoteJobsRequest,
 	AdminQueueQueueStatsRequest,
+	AdminQueueQueueStatsResponse,
+	AdminQueueQueuesResponse,
 	AdminQueueRemoveJobRequest,
 	AdminQueueRetryJobRequest,
 	AdminQueueShowJobRequest,
+	AdminQueueShowJobResponse,
 	AdminQueueStatsResponse,
 	AdminRelaysAddRequest,
 	AdminRelaysAddResponse,
@@ -694,13 +698,13 @@ export type Endpoints = {
 	'admin/queue/clear': { req: AdminQueueClearRequest; res: EmptyResponse };
 	'admin/queue/deliver-delayed': { req: EmptyRequest; res: AdminQueueDeliverDelayedResponse };
 	'admin/queue/inbox-delayed': { req: EmptyRequest; res: AdminQueueInboxDelayedResponse };
-	'admin/queue/jobs': { req: AdminQueueJobsRequest; res: EmptyResponse };
+	'admin/queue/jobs': { req: AdminQueueJobsRequest; res: AdminQueueJobsResponse };
 	'admin/queue/promote-jobs': { req: AdminQueuePromoteJobsRequest; res: EmptyResponse };
-	'admin/queue/queue-stats': { req: AdminQueueQueueStatsRequest; res: EmptyResponse };
-	'admin/queue/queues': { req: EmptyRequest; res: EmptyResponse };
+	'admin/queue/queue-stats': { req: AdminQueueQueueStatsRequest; res: AdminQueueQueueStatsResponse };
+	'admin/queue/queues': { req: EmptyRequest; res: AdminQueueQueuesResponse };
 	'admin/queue/remove-job': { req: AdminQueueRemoveJobRequest; res: EmptyResponse };
 	'admin/queue/retry-job': { req: AdminQueueRetryJobRequest; res: EmptyResponse };
-	'admin/queue/show-job': { req: AdminQueueShowJobRequest; res: EmptyResponse };
+	'admin/queue/show-job': { req: AdminQueueShowJobRequest; res: AdminQueueShowJobResponse };
 	'admin/queue/stats': { req: EmptyRequest; res: AdminQueueStatsResponse };
 	'admin/relays/add': { req: AdminRelaysAddRequest; res: AdminRelaysAddResponse };
 	'admin/relays/list': { req: EmptyRequest; res: AdminRelaysListResponse };
@@ -791,6 +795,7 @@ export type Endpoints = {
 	'chat/messages/show': { req: ChatMessagesShowRequest; res: ChatMessagesShowResponse };
 	'chat/messages/unreact': { req: ChatMessagesUnreactRequest; res: EmptyResponse };
 	'chat/messages/user-timeline': { req: ChatMessagesUserTimelineRequest; res: ChatMessagesUserTimelineResponse };
+	'chat/read-all': { req: EmptyRequest; res: EmptyResponse };
 	'chat/rooms/create': { req: ChatRoomsCreateRequest; res: ChatRoomsCreateResponse };
 	'chat/rooms/delete': { req: ChatRoomsDeleteRequest; res: EmptyResponse };
 	'chat/rooms/invitations/create': { req: ChatRoomsInvitationsCreateRequest; res: ChatRoomsInvitationsCreateResponse };

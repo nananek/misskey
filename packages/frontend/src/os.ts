@@ -13,6 +13,7 @@ import type { ComponentProps as CP } from 'vue-component-type-helpers';
 import type { Form, GetFormResultType } from '@/utility/form.js';
 import type { MenuItem } from '@/types/menu.js';
 import type { PostFormProps } from '@/types/post-form.js';
+import type { UploaderDialogFeatures } from '@/components/MkUploaderDialog.vue';
 import type MkRoleSelectDialog_TypeReferenceOnly from '@/components/MkRoleSelectDialog.vue';
 import type MkEmojiPickerDialog_TypeReferenceOnly from '@/components/MkEmojiPickerDialog.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -183,6 +184,57 @@ export function popup<T extends Component>(
 	props: ComponentProps<T>,
 	events: Partial<ComponentEmit<T>> = {},
 ): { dispose: () => void } {
+	markRaw(component);
+
+	const id = ++popupIdCount;
+	const dispose = () => {
+		// このsetTimeoutが無いと挙動がおかしくなる(autocompleteが閉じなくなる)。Vueのバグ？
+		window.setTimeout(() => {
+			popups.value = popups.value.filter(p => p.id !== id);
+		}, 0);
+	};
+	const state = {
+		component,
+		props,
+		events,
+		id,
+	};
+
+	popups.value.push(state);
+
+	return {
+		dispose,
+	};
+}
+
+export async function popupAsyncWithDialog<T extends Component>(
+	componentFetching: Promise<T>,
+	props: ComponentProps<T>,
+	events: Partial<ComponentEmit<T>> = {},
+): Promise<{ dispose: () => void }> {
+	let component: T;
+	let closeWaiting = () => {};
+
+	const timer = window.setTimeout(() => {
+		closeWaiting = waiting();
+	}, 100); // コンポーネントがキャッシュされている場合にもwaitingが表示されて画面がちらつくのを防止するためにラグを追加
+
+	try {
+		component = await componentFetching;
+	} catch (err) {
+		window.clearTimeout(timer);
+		closeWaiting();
+		alert({
+			type: 'error',
+			title: i18n.ts.somethingHappened,
+			text: 'CODE: ASYNC_COMP_LOAD_FAIL',
+		});
+		throw err;
+	}
+
+	window.clearTimeout(timer);
+	closeWaiting();
+
 	markRaw(component);
 
 	const id = ++popupIdCount;
@@ -547,14 +599,28 @@ export function success(): Promise<void> {
 	});
 }
 
-export function waiting(text?: string | null): () => void {
+export function waiting(options: { text?: string } = {}) {
 	window.document.body.setAttribute('inert', 'true');
 
 	const showing = ref(true);
+	const isSuccess = ref(false);
+
+	function done(doneOptions: { success?: boolean } = {}) {
+		if (doneOptions.success) {
+			isSuccess.value = true;
+			window.setTimeout(() => {
+				showing.value = false;
+			}, 1000);
+		} else {
+			showing.value = false;
+		}
+	}
+
+	// NOTE: dynamic importすると挙動がおかしくなる(showingの変更が伝播しない)
 	const { dispose } = popup(MkWaitingDialog, {
-		success: false,
+		success: isSuccess,
 		showing: showing,
-		text,
+		text: options.text,
 	}, {
 		closed: () => {
 			window.document.body.removeAttribute('inert');
@@ -562,9 +628,7 @@ export function waiting(text?: string | null): () => void {
 		},
 	});
 
-	return () => {
-		showing.value = false;
-	};
+	return done;
 }
 
 export function form<F extends Form>(title: string, f: F): Promise<{ canceled: true, result?: undefined } | { canceled?: false, result: GetFormResultType<F> }> {
@@ -609,10 +673,10 @@ export async function selectRole(params: ComponentProps<typeof MkRoleSelectDialo
 	});
 }
 
-export async function pickEmoji(src: HTMLElement, opts: ComponentProps<typeof MkEmojiPickerDialog_TypeReferenceOnly>): Promise<string> {
+export async function pickEmoji(anchorElement: HTMLElement, opts: ComponentProps<typeof MkEmojiPickerDialog_TypeReferenceOnly>): Promise<string> {
 	return new Promise(resolve => {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkEmojiPickerDialog.vue')), {
-			src,
+			anchorElement,
 			...opts,
 		}, {
 			done: emoji => {
@@ -639,20 +703,20 @@ export async function cropImageFile(imageFile: File | Blob, options: {
 	});
 }
 
-export function popupMenu(items: MenuItem[], src?: HTMLElement | EventTarget | null, options?: {
+export function popupMenu(items: MenuItem[], anchorElement?: HTMLElement | EventTarget | null, options?: {
 	align?: string;
 	width?: number;
 	onClosing?: () => void;
 }): Promise<void> {
-	if (!(src instanceof HTMLElement)) {
-		src = null;
+	if (!(anchorElement instanceof HTMLElement)) {
+		anchorElement = null;
 	}
 
-	let returnFocusTo = getHTMLElementOrNull(src) ?? getHTMLElementOrNull(window.document.activeElement);
+	let returnFocusTo = getHTMLElementOrNull(anchorElement) ?? getHTMLElementOrNull(window.document.activeElement);
 	return new Promise(resolve => nextTick(() => {
 		const { dispose } = popup(MkPopupMenu, {
 			items,
-			src,
+			anchorElement,
 			width: options?.width,
 			align: options?.align,
 			returnFocusTo,
@@ -773,14 +837,16 @@ export function launchUploader(
 	options?: {
 		folderId?: string | null;
 		multiple?: boolean;
+		features?: UploaderDialogFeatures;
 	},
 ): Promise<Misskey.entities.DriveFile[]> {
-	return new Promise((res, rej) => {
+	return new Promise(async (res, rej) => {
 		if (files.length === 0) return rej();
-		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkUploaderDialog.vue')), {
+		const { dispose } = await popupAsyncWithDialog(import('@/components/MkUploaderDialog.vue').then(x => x.default), {
 			files: markRaw(files),
 			folderId: options?.folderId,
 			multiple: options?.multiple,
+			features: options?.features,
 		}, {
 			done: driveFiles => {
 				if (driveFiles.length === 0) return rej();
@@ -790,3 +856,5 @@ export function launchUploader(
 		});
 	});
 }
+
+export const pageFolderTeleportCount = ref(0);

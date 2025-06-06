@@ -60,9 +60,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			@drop.prevent.stop="onDrop"
 			@contextmenu.stop="onContextmenu"
 		>
-			<div v-if="!store.r.readDriveTip.value" style="padding: 8px;">
-				<MkInfo closable @close="closeTip()"><div v-html="i18n.ts.driveAboutTip"></div></MkInfo>
-			</div>
+			<MkTip k="drive"><div v-html="i18n.ts.driveAboutTip"></div></MkTip>
 
 			<div :class="$style.folders">
 				<XFolder
@@ -115,7 +113,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<div v-if="filesPaginator.items.value.length == 0 && foldersPaginator.items.value.length == 0 && !fetching" :class="$style.empty">
 				<div v-if="draghover">{{ i18n.ts['empty-draghover'] }}</div>
-				<div v-if="!draghover && folder == null"><strong>{{ i18n.ts.emptyDrive }}</strong><br/>{{ i18n.ts['empty-drive-description'] }}</div>
+				<div v-if="!draghover && folder == null"><strong>{{ i18n.ts.emptyDrive }}</strong></div>
 				<div v-if="!draghover && folder != null">{{ i18n.ts.emptyFolder }}</div>
 			</div>
 		</div>
@@ -135,7 +133,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { nextTick, onActivated, onBeforeUnmount, onMounted, ref, useTemplateRef, watch, computed, TransitionGroup } from 'vue';
 import * as Misskey from 'misskey-js';
 import MkButton from './MkButton.vue';
-import MkInfo from './MkInfo.vue';
 import type { MenuItem } from '@/types/menu.js';
 import XNavFolder from '@/components/MkDrive.navFolder.vue';
 import XFolder from '@/components/MkDrive.folder.vue';
@@ -188,7 +185,7 @@ const isRootSelected = ref(false);
 
 watch(selectedFiles, () => {
 	emit('changeSelectedFiles', selectedFiles.value);
-});
+}, { deep: true });
 
 watch([selectedFolders, isRootSelected], () => {
 	emit('changeSelectedFolders', isRootSelected.value ? [null, ...selectedFolders.value] : selectedFolders.value);
@@ -659,10 +656,6 @@ function showMenu(ev: MouseEvent) {
 
 function onContextmenu(ev: MouseEvent) {
 	os.contextMenu(getMenu(), ev);
-}
-
-function closeTip() {
-	store.set('readDriveTip', true);
 }
 
 useGlobalEvent('driveFileCreated', (file) => {

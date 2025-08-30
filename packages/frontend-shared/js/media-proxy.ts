@@ -15,7 +15,7 @@ export class MediaProxy {
 		this.url = url;
 	}
 
-	public getProxiedImageUrl(imageUrl: string, type?: 'preview' | 'emoji' | 'avatar', mustOrigin = false, noFallback = false): string {
+	public getProxiedImageUrl(imageUrl: string, type?: 'preview' | 'emoji' | 'avatar', mustOrigin = false, noFallback = false, additionalParams = {}): string {
 		const localProxy = `${this.url}/proxy`;
 		let _imageUrl = imageUrl;
 
@@ -32,6 +32,7 @@ export class MediaProxy {
 			...(!noFallback ? { 'fallback': '1' } : {}),
 			...(type ? { [type]: '1' } : {}),
 			...(mustOrigin ? { origin: '1' } : {}),
+			...(additionalParams),
 		})}`;
 	}
 

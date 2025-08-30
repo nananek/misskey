@@ -93,7 +93,7 @@ const url = computed(() => {
 				props.useOriginalSize ? undefined : 'emoji',
 				false,
 				true,
-				{"customEmojiName": customEmojiName.value, "isLocal": isLocal.value}
+				{"customEmojiName": customEmojiName.value, "host": props.host, "isLocal": isLocal.value}
 			);
 	return prefer.s.disableShowingAnimatedImages
 		? getStaticImageUrl(proxied)

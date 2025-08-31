@@ -123,16 +123,16 @@ export class DriveFileEntityService {
 
 			if (key && !key.match('/')) {	// 古いものはここにオブジェクトストレージキーが入ってるので除外
 				const url = `${this.config.url}/files/${key}`;
-				if (mode === 'avatar') return this.getProxiedUrl(file.uri, 'avatar');
+				//if (mode === 'avatar') return this.getProxiedUrl(file.uri, 'avatar');
 				return url;
 			}
 		}
 
 		const url = file.webpublicUrl ?? file.url;
 
-		if (mode === 'avatar') {
-			return this.getProxiedUrl(url, 'avatar');
-		}
+		//if (mode === 'avatar') {
+		//	return this.getProxiedUrl(url, 'avatar');
+		//}
 		return url;
 	}
 

@@ -86,6 +86,7 @@ RUN apt-get update \
 # add package.json to add pnpm
 COPY ./package.json ./package.json
 RUN node -e "console.log(JSON.parse(require('node:fs').readFileSync('./package.json')).packageManager)" | xargs npm install -g
+RUN mkdir -p /var/run/misskey && chmod +x /var/run/misskey && chown -R misskey /var/run/misskey
 
 USER misskey
 WORKDIR /misskey

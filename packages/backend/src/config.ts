@@ -13,10 +13,11 @@ import type { RedisOptions } from 'ioredis';
 import type { ManifestChunk } from 'vite';
 
 type RedisOptionsSource = Partial<RedisOptions> & {
-	host: string;
-	port: number;
+	host?: string;
+	port?: number;
+	path?: string;
 	family?: number;
-	pass: string;
+	pass?: string;
 	db?: number;
 	prefix?: string;
 };

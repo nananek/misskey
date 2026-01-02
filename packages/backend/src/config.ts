@@ -13,9 +13,8 @@ import type { RedisOptions } from 'ioredis';
 import type { ManifestChunk } from 'vite';
 
 type RedisOptionsSource = Partial<RedisOptions> & {
-	host?: string;
-	port?: number;
-	path?: string;
+	host: string;
+	port: number;
 	family?: number;
 	pass?: string;
 	db?: number;
@@ -33,186 +32,186 @@ type Source = {
 	chmodSocket?: string;
 	enableIpRateLimit?: boolean;
 	disableHsts?: boolean;
-	db: {
-		host: string;
-		port: number;
-		db?: string;
-		user?: string;
-		pass?: string;
-		disableCache?: boolean;
-		extra?: { [x: string]: string };
-	};
-	dbReplications?: boolean;
-	dbSlaves?: {
-		host: string;
-		port: number;
-		db: string;
-		user: string;
-		pass: string;
-	}[];
-	redis: RedisOptionsSource;
-	redisForPubsub?: RedisOptionsSource;
-	redisForJobQueue?: RedisOptionsSource;
-	redisForTimelines?: RedisOptionsSource;
-	redisForReactions?: RedisOptionsSource;
-	fulltextSearch?: {
-		provider?: FulltextSearchProvider;
-	};
-	meilisearch?: {
-		host: string;
-		port: string;
-		apiKey: string;
-		ssl?: boolean;
-		index: string;
-		scope?: 'local' | 'global' | string[];
-	};
-	sentryForBackend?: { options: Partial<Sentry.NodeOptions>; enableNodeProfiling: boolean; };
-	sentryForFrontend?: {
-		options: Partial<SentryVue.BrowserOptions> & { dsn: string };
-		vueIntegration?: SentryVue.VueIntegrationOptions | null;
-		browserTracingIntegration?: Parameters<typeof SentryVue.browserTracingIntegration>[0] | null;
-		replayIntegration?: Parameters<typeof SentryVue.replayIntegration>[0] | null;
-	};
+db: {
+host: string;
+port: number;
+      db?: string;
+      user?: string;
+      pass?: string;
+      disableCache?: boolean;
+      extra?: { [x: string]: string };
+    };
+    dbReplications?: boolean;
+    dbSlaves?: {
+host: string;
+port: number;
+db: string;
+user: string;
+pass: string;
+    }[];
+redis: RedisOptionsSource;
+       redisForPubsub?: RedisOptionsSource;
+       redisForJobQueue?: RedisOptionsSource;
+       redisForTimelines?: RedisOptionsSource;
+       redisForReactions?: RedisOptionsSource;
+       fulltextSearch?: {
+	       provider?: FulltextSearchProvider;
+       };
+       meilisearch?: {
+host: string;
+port: string;
+apiKey: string;
+	ssl?: boolean;
+index: string;
+       scope?: 'local' | 'global' | string[];
+       };
+       sentryForBackend?: { options: Partial<Sentry.NodeOptions>; enableNodeProfiling: boolean; };
+       sentryForFrontend?: {
+options: Partial<SentryVue.BrowserOptions> & { dsn: string };
+	 vueIntegration?: SentryVue.VueIntegrationOptions | null;
+	 browserTracingIntegration?: Parameters<typeof SentryVue.browserTracingIntegration>[0] | null;
+	 replayIntegration?: Parameters<typeof SentryVue.replayIntegration>[0] | null;
+       };
 
-	publishTarballInsteadOfProvideRepositoryUrl?: boolean;
+       publishTarballInsteadOfProvideRepositoryUrl?: boolean;
 
-	setupPassword?: string;
+       setupPassword?: string;
 
-	proxy?: string;
-	proxySmtp?: string;
-	proxyBypassHosts?: string[];
+       proxy?: string;
+       proxySmtp?: string;
+       proxyBypassHosts?: string[];
 
-	allowedPrivateNetworks?: string[];
+       allowedPrivateNetworks?: string[];
 
-	maxFileSize?: number;
+       maxFileSize?: number;
 
-	clusterLimit?: number;
+       clusterLimit?: number;
 
-	id: string;
+id: string;
 
-	outgoingAddress?: string;
-	outgoingAddressFamily?: 'ipv4' | 'ipv6' | 'dual';
+    outgoingAddress?: string;
+    outgoingAddressFamily?: 'ipv4' | 'ipv6' | 'dual';
 
-	deliverJobConcurrency?: number;
-	inboxJobConcurrency?: number;
-	relationshipJobConcurrency?: number;
-	deliverJobPerSec?: number;
-	inboxJobPerSec?: number;
-	relationshipJobPerSec?: number;
-	deliverJobMaxAttempts?: number;
-	inboxJobMaxAttempts?: number;
+    deliverJobConcurrency?: number;
+    inboxJobConcurrency?: number;
+    relationshipJobConcurrency?: number;
+    deliverJobPerSec?: number;
+    inboxJobPerSec?: number;
+    relationshipJobPerSec?: number;
+    deliverJobMaxAttempts?: number;
+    inboxJobMaxAttempts?: number;
 
-	mediaProxy?: string;
-	videoThumbnailGenerator?: string;
+    mediaProxy?: string;
+    videoThumbnailGenerator?: string;
 
-	perChannelMaxNoteCacheCount?: number;
-	perUserNotificationsMaxCount?: number;
-	deactivateAntennaThreshold?: number;
-	pidFile: string;
+    perChannelMaxNoteCacheCount?: number;
+    perUserNotificationsMaxCount?: number;
+    deactivateAntennaThreshold?: number;
+pidFile: string;
 
-	logging?: {
-		sql?: {
-			disableQueryTruncation?: boolean,
-			enableQueryParamLogging?: boolean,
-		}
-	}
+	 logging?: {
+		 sql?: {
+			 disableQueryTruncation?: boolean,
+				 enableQueryParamLogging?: boolean,
+		 }
+	 }
 };
 
 export type Config = {
-	url: string;
-	port: number;
-	socket: string | undefined;
-	trustProxy: NonNullable<FastifyServerOptions['trustProxy']>;
-	chmodSocket: string | undefined;
-	enableIpRateLimit: boolean;
-	disableHsts: boolean | undefined;
-	db: {
-		host: string;
-		port: number;
-		db: string;
-		user: string;
-		pass: string;
-		disableCache?: boolean;
-		extra?: { [x: string]: string };
-	};
-	dbReplications: boolean | undefined;
-	dbSlaves: {
-		host: string;
-		port: number;
-		db: string;
-		user: string;
-		pass: string;
-	}[] | undefined;
-	fulltextSearch?: {
-		provider?: FulltextSearchProvider;
-	};
-	meilisearch: {
-		host: string;
-		port: string;
-		apiKey: string;
-		ssl?: boolean;
-		index: string;
-		scope?: 'local' | 'global' | string[];
-	} | undefined;
-	proxy: string | undefined;
-	proxySmtp: string | undefined;
-	proxyBypassHosts: string[] | undefined;
-	allowedPrivateNetworks: string[] | undefined;
-	maxFileSize: number;
-	clusterLimit: number | undefined;
-	id: string;
-	outgoingAddress: string | undefined;
-	outgoingAddressFamily: 'ipv4' | 'ipv6' | 'dual' | undefined;
-	deliverJobConcurrency: number | undefined;
-	inboxJobConcurrency: number | undefined;
-	relationshipJobConcurrency: number | undefined;
-	deliverJobPerSec: number | undefined;
-	inboxJobPerSec: number | undefined;
-	relationshipJobPerSec: number | undefined;
-	deliverJobMaxAttempts: number | undefined;
-	inboxJobMaxAttempts: number | undefined;
-	logging?: {
-		sql?: {
-			disableQueryTruncation?: boolean,
-			enableQueryParamLogging?: boolean,
-		}
-	}
+url: string;
+port: number;
+socket: string | undefined;
+trustProxy: NonNullable<FastifyServerOptions['trustProxy']>;
+chmodSocket: string | undefined;
+enableIpRateLimit: boolean;
+disableHsts: boolean | undefined;
+db: {
+host: string;
+port: number;
+db: string;
+user: string;
+pass: string;
+      disableCache?: boolean;
+      extra?: { [x: string]: string };
+    };
+dbReplications: boolean | undefined;
+dbSlaves: {
+host: string;
+port: number;
+db: string;
+user: string;
+pass: string;
+	  }[] | undefined;
+	  fulltextSearch?: {
+		  provider?: FulltextSearchProvider;
+	  };
+meilisearch: {
+host: string;
+port: string;
+apiKey: string;
+	ssl?: boolean;
+index: string;
+       scope?: 'local' | 'global' | string[];
+	     } | undefined;
+proxy: string | undefined;
+proxySmtp: string | undefined;
+proxyBypassHosts: string[] | undefined;
+allowedPrivateNetworks: string[] | undefined;
+maxFileSize: number;
+clusterLimit: number | undefined;
+id: string;
+outgoingAddress: string | undefined;
+outgoingAddressFamily: 'ipv4' | 'ipv6' | 'dual' | undefined;
+deliverJobConcurrency: number | undefined;
+inboxJobConcurrency: number | undefined;
+relationshipJobConcurrency: number | undefined;
+deliverJobPerSec: number | undefined;
+inboxJobPerSec: number | undefined;
+relationshipJobPerSec: number | undefined;
+deliverJobMaxAttempts: number | undefined;
+inboxJobMaxAttempts: number | undefined;
+		     logging?: {
+			     sql?: {
+				     disableQueryTruncation?: boolean,
+					     enableQueryParamLogging?: boolean,
+			     }
+		     }
 
-	version: string;
-	publishTarballInsteadOfProvideRepositoryUrl: boolean;
-	setupPassword: string | undefined;
-	host: string;
-	hostname: string;
-	scheme: string;
-	wsScheme: string;
-	apiUrl: string;
-	wsUrl: string;
-	authUrl: string;
-	driveUrl: string;
-	userAgent: string;
-	frontendEntry: ManifestChunk;
-	frontendManifestExists: boolean;
-	frontendEmbedEntry: ManifestChunk;
-	frontendEmbedManifestExists: boolean;
-	mediaProxy: string;
-	externalMediaProxyEnabled: boolean;
-	videoThumbnailGenerator: string | null;
-	redis: RedisOptions & RedisOptionsSource;
-	redisForPubsub: RedisOptions & RedisOptionsSource;
-	redisForJobQueue: RedisOptions & RedisOptionsSource;
-	redisForTimelines: RedisOptions & RedisOptionsSource;
-	redisForReactions: RedisOptions & RedisOptionsSource;
-	sentryForBackend: { options: Partial<Sentry.NodeOptions>; enableNodeProfiling: boolean; } | undefined;
-	sentryForFrontend: {
-		options: Partial<SentryVue.BrowserOptions> & { dsn: string };
-		vueIntegration?: SentryVue.VueIntegrationOptions | null;
-		browserTracingIntegration?: Parameters<typeof SentryVue.browserTracingIntegration>[0] | null;
-		replayIntegration?: Parameters<typeof SentryVue.replayIntegration>[0] | null;
-	} | undefined;
-	perChannelMaxNoteCacheCount: number;
-	perUserNotificationsMaxCount: number;
-	deactivateAntennaThreshold: number;
-	pidFile: string;
+version: string;
+publishTarballInsteadOfProvideRepositoryUrl: boolean;
+setupPassword: string | undefined;
+host: string;
+hostname: string;
+scheme: string;
+wsScheme: string;
+apiUrl: string;
+wsUrl: string;
+authUrl: string;
+driveUrl: string;
+userAgent: string;
+frontendEntry: ManifestChunk;
+frontendManifestExists: boolean;
+frontendEmbedEntry: ManifestChunk;
+frontendEmbedManifestExists: boolean;
+mediaProxy: string;
+externalMediaProxyEnabled: boolean;
+videoThumbnailGenerator: string | null;
+redis: RedisOptions & RedisOptionsSource;
+redisForPubsub: RedisOptions & RedisOptionsSource;
+redisForJobQueue: RedisOptions & RedisOptionsSource;
+redisForTimelines: RedisOptions & RedisOptionsSource;
+redisForReactions: RedisOptions & RedisOptionsSource;
+sentryForBackend: { options: Partial<Sentry.NodeOptions>; enableNodeProfiling: boolean; } | undefined;
+sentryForFrontend: {
+options: Partial<SentryVue.BrowserOptions> & { dsn: string };
+	 vueIntegration?: SentryVue.VueIntegrationOptions | null;
+	 browserTracingIntegration?: Parameters<typeof SentryVue.browserTracingIntegration>[0] | null;
+	 replayIntegration?: Parameters<typeof SentryVue.replayIntegration>[0] | null;
+		   } | undefined;
+perChannelMaxNoteCacheCount: number;
+perUserNotificationsMaxCount: number;
+deactivateAntennaThreshold: number;
+pidFile: string;
 };
 
 export type FulltextSearchProvider = 'sqlLike' | 'sqlPgroonga' | 'meilisearch';
@@ -261,74 +260,74 @@ export function loadConfig(): Config {
 
 	return {
 		version,
-		publishTarballInsteadOfProvideRepositoryUrl: !!config.publishTarballInsteadOfProvideRepositoryUrl,
-		setupPassword: config.setupPassword,
-		url: url.origin,
-		port: config.port ?? parseInt(process.env.PORT ?? '', 10),
-		socket: config.socket,
-		trustProxy: config.trustProxy ?? [
-			'10.0.0.0/8',
+			publishTarballInsteadOfProvideRepositoryUrl: !!config.publishTarballInsteadOfProvideRepositoryUrl,
+			setupPassword: config.setupPassword,
+			url: url.origin,
+			port: config.port ?? parseInt(process.env.PORT ?? '', 10),
+			socket: config.socket,
+			trustProxy: config.trustProxy ?? [
+				'10.0.0.0/8',
 			'172.16.0.0/12',
 			'192.168.0.0/16',
 			'127.0.0.1/32',
 			'::1/128',
 			'fc00::/7',
-		],
-		chmodSocket: config.chmodSocket,
-		disableHsts: config.disableHsts,
-		enableIpRateLimit: config.enableIpRateLimit ?? true,
-		host,
-		hostname,
-		scheme,
-		wsScheme,
-		wsUrl: `${wsScheme}://${host}`,
-		apiUrl: `${scheme}://${host}/api`,
-		authUrl: `${scheme}://${host}/auth`,
-		driveUrl: `${scheme}://${host}/files`,
-		db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass },
-		dbReplications: config.dbReplications,
-		dbSlaves: config.dbSlaves,
-		fulltextSearch: config.fulltextSearch,
-		meilisearch: config.meilisearch,
-		redis,
-		redisForPubsub: config.redisForPubsub ? convertRedisOptions(config.redisForPubsub, host) : redis,
-		redisForJobQueue: config.redisForJobQueue ? convertRedisOptions(config.redisForJobQueue, host) : redis,
-		redisForTimelines: config.redisForTimelines ? convertRedisOptions(config.redisForTimelines, host) : redis,
-		redisForReactions: config.redisForReactions ? convertRedisOptions(config.redisForReactions, host) : redis,
-		sentryForBackend: config.sentryForBackend,
-		sentryForFrontend: config.sentryForFrontend,
-		id: config.id,
-		proxy: config.proxy,
-		proxySmtp: config.proxySmtp,
-		proxyBypassHosts: config.proxyBypassHosts,
-		allowedPrivateNetworks: config.allowedPrivateNetworks,
-		maxFileSize: config.maxFileSize ?? 262144000,
-		clusterLimit: config.clusterLimit,
-		outgoingAddress: config.outgoingAddress,
-		outgoingAddressFamily: config.outgoingAddressFamily,
-		deliverJobConcurrency: config.deliverJobConcurrency,
-		inboxJobConcurrency: config.inboxJobConcurrency,
-		relationshipJobConcurrency: config.relationshipJobConcurrency,
-		deliverJobPerSec: config.deliverJobPerSec,
-		inboxJobPerSec: config.inboxJobPerSec,
-		relationshipJobPerSec: config.relationshipJobPerSec,
-		deliverJobMaxAttempts: config.deliverJobMaxAttempts,
-		inboxJobMaxAttempts: config.inboxJobMaxAttempts,
-		mediaProxy: externalMediaProxy ?? internalMediaProxy,
-		externalMediaProxyEnabled: externalMediaProxy !== null && externalMediaProxy !== internalMediaProxy,
-		videoThumbnailGenerator: config.videoThumbnailGenerator ?
-			config.videoThumbnailGenerator.endsWith('/') ? config.videoThumbnailGenerator.substring(0, config.videoThumbnailGenerator.length - 1) : config.videoThumbnailGenerator
-			: null,
-		userAgent: `Misskey/${version} (${config.url})`,
-		frontendEntry: frontendManifest['src/_boot_.ts'],
-		frontendManifestExists: frontendManifestExists,
-		frontendEmbedEntry: frontendEmbedManifest['src/boot.ts'],
-		frontendEmbedManifestExists: frontendEmbedManifestExists,
-		perChannelMaxNoteCacheCount: config.perChannelMaxNoteCacheCount ?? 1000,
-		perUserNotificationsMaxCount: config.perUserNotificationsMaxCount ?? 500,
-		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
-		pidFile: config.pidFile,
-		logging: config.logging,
+			],
+			chmodSocket: config.chmodSocket,
+			disableHsts: config.disableHsts,
+			enableIpRateLimit: config.enableIpRateLimit ?? true,
+			host,
+			hostname,
+			scheme,
+			wsScheme,
+			wsUrl: `${wsScheme}://${host}`,
+			apiUrl: `${scheme}://${host}/api`,
+			authUrl: `${scheme}://${host}/auth`,
+			driveUrl: `${scheme}://${host}/files`,
+			db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass },
+			dbReplications: config.dbReplications,
+			dbSlaves: config.dbSlaves,
+			fulltextSearch: config.fulltextSearch,
+			meilisearch: config.meilisearch,
+			redis,
+			redisForPubsub: config.redisForPubsub ? convertRedisOptions(config.redisForPubsub, host) : redis,
+			redisForJobQueue: config.redisForJobQueue ? convertRedisOptions(config.redisForJobQueue, host) : redis,
+			redisForTimelines: config.redisForTimelines ? convertRedisOptions(config.redisForTimelines, host) : redis,
+			redisForReactions: config.redisForReactions ? convertRedisOptions(config.redisForReactions, host) : redis,
+			sentryForBackend: config.sentryForBackend,
+			sentryForFrontend: config.sentryForFrontend,
+			id: config.id,
+			proxy: config.proxy,
+			proxySmtp: config.proxySmtp,
+			proxyBypassHosts: config.proxyBypassHosts,
+			allowedPrivateNetworks: config.allowedPrivateNetworks,
+			maxFileSize: config.maxFileSize ?? 262144000,
+			clusterLimit: config.clusterLimit,
+			outgoingAddress: config.outgoingAddress,
+			outgoingAddressFamily: config.outgoingAddressFamily,
+			deliverJobConcurrency: config.deliverJobConcurrency,
+			inboxJobConcurrency: config.inboxJobConcurrency,
+			relationshipJobConcurrency: config.relationshipJobConcurrency,
+			deliverJobPerSec: config.deliverJobPerSec,
+			inboxJobPerSec: config.inboxJobPerSec,
+			relationshipJobPerSec: config.relationshipJobPerSec,
+			deliverJobMaxAttempts: config.deliverJobMaxAttempts,
+			inboxJobMaxAttempts: config.inboxJobMaxAttempts,
+			mediaProxy: externalMediaProxy ?? internalMediaProxy,
+			externalMediaProxyEnabled: externalMediaProxy !== null && externalMediaProxy !== internalMediaProxy,
+			videoThumbnailGenerator: config.videoThumbnailGenerator ?
+				config.videoThumbnailGenerator.endsWith('/') ? config.videoThumbnailGenerator.substring(0, config.videoThumbnailGenerator.length - 1) : config.videoThumbnailGenerator
+				: null,
+			userAgent: `Misskey/${version} (${config.url})`,
+			frontendEntry: frontendManifest['src/_boot_.ts'],
+			frontendManifestExists: frontendManifestExists,
+			frontendEmbedEntry: frontendEmbedManifest['src/boot.ts'],
+			frontendEmbedManifestExists: frontendEmbedManifestExists,
+			perChannelMaxNoteCacheCount: config.perChannelMaxNoteCacheCount ?? 1000,
+			perUserNotificationsMaxCount: config.perUserNotificationsMaxCount ?? 500,
+			deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
+			pidFile: config.pidFile,
+			logging: config.logging,
 	};
 }
 
@@ -341,7 +340,7 @@ function tryCreateUrl(url: string) {
 }
 
 function convertRedisOptions(options: RedisOptionsSource, host: string): RedisOptions & RedisOptionsSource {
-	return {
+	const converted: any = {
 		...options,
 		password: options.pass,
 		prefix: options.prefix ?? host,
@@ -349,4 +348,15 @@ function convertRedisOptions(options: RedisOptionsSource, host: string): RedisOp
 		keyPrefix: `${options.prefix ?? host}:`,
 		db: options.db ?? 0,
 	};
+
+	// host が '/' で始まる（Unixドメインソケットのパス）場合の処理を追加
+	if (options.host && (options.host.startsWith('/') || options.host.startsWith('./'))) {
+		converted.path = options.host;
+
+		// ioredisが混乱しないよう、hostとportを削除または無効化する
+		delete converted.host;
+		delete converted.port;
+	}
+
+	return converted;
 }

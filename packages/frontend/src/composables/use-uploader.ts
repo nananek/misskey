@@ -502,7 +502,15 @@ export function useUploader(options: {
 		item.uploadFailed = false;
 		item.uploading = true;
 
-		const { filePromise, abort } = uploadFile(item.preprocessedFile ?? item.file, {
+		let fileToUpload = item.preprocessedFile ?? item.file;
+		if (fileToUpload.size === 0 && item.file.size > 0) {
+			console.warn('Preprocessed file is 0 bytes, falling back to original file');
+			fileToUpload = item.file;
+			item.compressedSize = null;
+			item.uploadName = item.name;
+		}
+
+		const { filePromise, abort } = uploadFile(fileToUpload, {
 			name: item.uploadName ?? item.name,
 			folderId: options.folderId === undefined ? prefer.s.uploadFolder : options.folderId,
 			isSensitive: item.isSensitive ?? false,
@@ -594,8 +602,9 @@ export function useUploader(options: {
 				await preprocessForVideo(item);
 			} catch (err) {
 				console.error('Failed to preprocess video', err);
-
-				// nop
+				item.preprocessedFile = markRaw(item.file);
+				item.compressedSize = null;
+				item.uploadName = item.name;
 			}
 		}
 
@@ -697,7 +706,11 @@ export function useUploader(options: {
 	async function preprocessForVideo(item: UploaderItem): Promise<void> {
 		let preprocessedFile: Blob | File = item.file;
 
-		const needsCompress = item.compressionLevel !== 0 && VIDEO_COMPRESSION_SUPPORTED_TYPES.includes(preprocessedFile.type);
+		// iOS (all browsers use WebKit) has unreliable WebCodecs support that can
+		// cause video reads to stall, producing 0-byte files
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		const needsCompress = !isIOS && item.compressionLevel !== 0 && VIDEO_COMPRESSION_SUPPORTED_TYPES.includes(preprocessedFile.type);
 
 		if (needsCompress) {
 			const mediabunny = await import('mediabunny');

@@ -741,9 +741,15 @@ export function useUploader(options: {
 
 			item.abortPreprocess = null;
 
-			preprocessedFile = new Blob([output.target.buffer!], { type: output.format.mimeType });
-			item.compressedSize = output.target.buffer!.byteLength;
-			item.uploadName = `${item.name}.mp4`;
+			if (output.target.buffer == null || output.target.buffer.byteLength === 0) {
+				console.warn('Video conversion produced empty output, falling back to original file');
+				item.compressedSize = null;
+				item.uploadName = item.name;
+			} else {
+				preprocessedFile = new Blob([output.target.buffer], { type: output.format.mimeType });
+				item.compressedSize = output.target.buffer.byteLength;
+				item.uploadName = `${item.name}.mp4`;
+			}
 		} else {
 			item.compressedSize = null;
 			item.uploadName = item.name;

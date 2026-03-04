@@ -48,7 +48,11 @@ RUN rm -rf .git/
 
 FROM --platform=$TARGETPLATFORM node:${NODE_VERSION} AS target-builder
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	rm -f /etc/apt/apt.conf.d/docker-clean \
+	; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+	&& apt-get update \
 	&& apt-get install -yqq --no-install-recommends \
 	build-essential
 
@@ -105,7 +109,21 @@ COPY --chown=misskey:misskey --from=native-builder /misskey/packages/misskey-bub
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/built ./packages/backend/built
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/i18n/built ./packages/i18n/built
 COPY --chown=misskey:misskey --from=native-builder /misskey/fluent-emojis /misskey/fluent-emojis
-COPY --chown=misskey:misskey . ./
+COPY --chown=misskey:misskey --link ["pnpm-workspace.yaml", "healthcheck.sh", "./"]
+COPY --chown=misskey:misskey --link ["packages/backend/package.json", "./packages/backend/"]
+COPY --chown=misskey:misskey --link ["packages/backend/ormconfig.js", "./packages/backend/"]
+COPY --chown=misskey:misskey --link ["packages/backend/scripts", "./packages/backend/scripts/"]
+COPY --chown=misskey:misskey --link ["packages/backend/migration", "./packages/backend/migration/"]
+COPY --chown=misskey:misskey --link ["packages/frontend-shared/package.json", "./packages/frontend-shared/"]
+COPY --chown=misskey:misskey --link ["packages/frontend/package.json", "./packages/frontend/"]
+COPY --chown=misskey:misskey --link ["packages/frontend-embed/package.json", "./packages/frontend-embed/"]
+COPY --chown=misskey:misskey --link ["packages/frontend-builder/package.json", "./packages/frontend-builder/"]
+COPY --chown=misskey:misskey --link ["packages/i18n/package.json", "./packages/i18n/"]
+COPY --chown=misskey:misskey --link ["packages/icons-subsetter/package.json", "./packages/icons-subsetter/"]
+COPY --chown=misskey:misskey --link ["packages/sw/package.json", "./packages/sw/"]
+COPY --chown=misskey:misskey --link ["packages/misskey-js/package.json", "./packages/misskey-js/"]
+COPY --chown=misskey:misskey --link ["packages/misskey-reversi/package.json", "./packages/misskey-reversi/"]
+COPY --chown=misskey:misskey --link ["packages/misskey-bubble-game/package.json", "./packages/misskey-bubble-game/"]
 
 ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so
 ENV NODE_ENV=production

@@ -502,15 +502,7 @@ export function useUploader(options: {
 		item.uploadFailed = false;
 		item.uploading = true;
 
-		let fileToUpload = item.preprocessedFile ?? item.file;
-		if (fileToUpload.size === 0 && item.file.size > 0) {
-			console.warn('Preprocessed file is 0 bytes, falling back to original file');
-			fileToUpload = item.file;
-			item.compressedSize = null;
-			item.uploadName = item.name;
-		}
-
-		const { filePromise, abort } = uploadFile(fileToUpload, {
+		const { filePromise, abort } = uploadFile(item.preprocessedFile ?? item.file, {
 			name: item.uploadName ?? item.name,
 			folderId: options.folderId === undefined ? prefer.s.uploadFolder : options.folderId,
 			isSensitive: item.isSensitive ?? false,
@@ -602,9 +594,8 @@ export function useUploader(options: {
 				await preprocessForVideo(item);
 			} catch (err) {
 				console.error('Failed to preprocess video', err);
-				item.preprocessedFile = markRaw(item.file);
-				item.compressedSize = null;
-				item.uploadName = item.name;
+
+				// nop
 			}
 		}
 
@@ -706,11 +697,7 @@ export function useUploader(options: {
 	async function preprocessForVideo(item: UploaderItem): Promise<void> {
 		let preprocessedFile: Blob | File = item.file;
 
-		// iOS (all browsers use WebKit) has unreliable WebCodecs support that can
-		// cause video reads to stall, producing 0-byte files
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-		const needsCompress = !isIOS && item.compressionLevel !== 0 && VIDEO_COMPRESSION_SUPPORTED_TYPES.includes(preprocessedFile.type);
+		const needsCompress = item.compressionLevel !== 0 && VIDEO_COMPRESSION_SUPPORTED_TYPES.includes(preprocessedFile.type);
 
 		if (needsCompress) {
 			const mediabunny = await import('mediabunny');
@@ -754,15 +741,9 @@ export function useUploader(options: {
 
 			item.abortPreprocess = null;
 
-			if (output.target.buffer == null || output.target.buffer.byteLength === 0) {
-				console.warn('Video conversion produced empty output, falling back to original file');
-				item.compressedSize = null;
-				item.uploadName = item.name;
-			} else {
-				preprocessedFile = new Blob([output.target.buffer], { type: output.format.mimeType });
-				item.compressedSize = output.target.buffer.byteLength;
-				item.uploadName = `${item.name}.mp4`;
-			}
+			preprocessedFile = new Blob([output.target.buffer!], { type: output.format.mimeType });
+			item.compressedSize = output.target.buffer!.byteLength;
+			item.uploadName = `${item.name}.mp4`;
 		} else {
 			item.compressedSize = null;
 			item.uploadName = item.name;

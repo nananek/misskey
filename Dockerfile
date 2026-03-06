@@ -48,11 +48,7 @@ RUN rm -rf .git/
 
 FROM --platform=$TARGETPLATFORM node:${NODE_VERSION} AS target-builder
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-	--mount=type=cache,target=/var/lib/apt,sharing=locked \
-	rm -f /etc/apt/apt.conf.d/docker-clean \
-	; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
-	&& apt-get update \
+RUN apt-get update \
 	&& apt-get install -yqq --no-install-recommends \
 	build-essential
 
@@ -92,7 +88,6 @@ RUN apt-get update \
 # add package.json to add pnpm
 COPY ./package.json ./package.json
 RUN node -e "console.log(JSON.parse(require('node:fs').readFileSync('./package.json')).packageManager)" | xargs npm install -g
-RUN mkdir -p /var/run/misskey && chmod +x /var/run/misskey && chown -R misskey /var/run/misskey
 
 USER misskey
 WORKDIR /misskey
@@ -110,21 +105,7 @@ COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/bui
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/src-js ./packages/backend/src-js
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/i18n/built ./packages/i18n/built
 COPY --chown=misskey:misskey --from=native-builder /misskey/fluent-emojis /misskey/fluent-emojis
-COPY --chown=misskey:misskey ["pnpm-workspace.yaml", "healthcheck.sh", "./"]
-COPY --chown=misskey:misskey ["packages/backend/package.json", "./packages/backend/"]
-COPY --chown=misskey:misskey ["packages/backend/ormconfig.js", "./packages/backend/"]
-COPY --chown=misskey:misskey ["packages/backend/scripts", "./packages/backend/scripts/"]
-COPY --chown=misskey:misskey ["packages/backend/migration", "./packages/backend/migration/"]
-COPY --chown=misskey:misskey ["packages/frontend-shared/package.json", "./packages/frontend-shared/"]
-COPY --chown=misskey:misskey ["packages/frontend/package.json", "./packages/frontend/"]
-COPY --chown=misskey:misskey ["packages/frontend-embed/package.json", "./packages/frontend-embed/"]
-COPY --chown=misskey:misskey ["packages/frontend-builder/package.json", "./packages/frontend-builder/"]
-COPY --chown=misskey:misskey ["packages/i18n/package.json", "./packages/i18n/"]
-COPY --chown=misskey:misskey ["packages/icons-subsetter/package.json", "./packages/icons-subsetter/"]
-COPY --chown=misskey:misskey ["packages/sw/package.json", "./packages/sw/"]
-COPY --chown=misskey:misskey ["packages/misskey-js/package.json", "./packages/misskey-js/"]
-COPY --chown=misskey:misskey ["packages/misskey-reversi/package.json", "./packages/misskey-reversi/"]
-COPY --chown=misskey:misskey ["packages/misskey-bubble-game/package.json", "./packages/misskey-bubble-game/"]
+COPY --chown=misskey:misskey . ./
 
 ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so
 ENV NODE_ENV=production

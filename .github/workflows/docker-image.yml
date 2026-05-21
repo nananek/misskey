@@ -7,25 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: tag
+        run: echo "image=ghcr.io/${{ github.repository }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push (SHA tag)
         uses: docker/build-push-action@v5
@@ -33,33 +34,106 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          tags: ${{ steps.tag.outputs.image }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify image
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    services:
+      postgres:
+        image: postgres:15
         env:
-          IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          POSTGRES_USER: misskey
+          POSTGRES_PASSWORD: misskey
+          POSTGRES_DB: misskey
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+        ports:
+          - 6379:6379
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create test config
         run: |
-          set -euo pipefail
+          mkdir -p /tmp/misskey-config
+          cat > /tmp/misskey-config/default.yml << 'EOF'
+          url: http://localhost:3000
+          port: 3000
+          db:
+            host: localhost
+            port: 5432
+            db: misskey
+            user: misskey
+            pass: misskey
+          redis:
+            host: localhost
+            port: 6379
+          id: aidx
+          EOF
 
-          echo "==> node binary"
-          docker run --rm --entrypoint /nodejs/bin/node $IMAGE --version
+      - name: Start Misskey
+        run: |
+          docker run -d --name misskey-ci \
+            --network host \
+            -v /tmp/misskey-config:/misskey/.config:ro \
+            ${{ needs.build.outputs.image }}
 
-          echo "==> docker-start.js syntax"
-          docker run --rm --entrypoint /nodejs/bin/node $IMAGE --check /misskey/scripts/docker-start.js
+      - name: Wait for /healthz
+        run: |
+          echo "Waiting for Misskey to start (up to 5 minutes)..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/healthz; then
+              echo ""
+              echo "OK: Misskey started (attempt $i)"
+              exit 0
+            fi
+            echo "[$i/60] not ready, retrying in 5s..."
+            sleep 5
+          done
+          echo "Misskey did not start within 5 minutes"
+          docker logs misskey-ci
+          exit 1
 
-          echo "==> healthcheck.js syntax"
-          docker run --rm --entrypoint /nodejs/bin/node $IMAGE --check /misskey/healthcheck.js
+      - name: Stop container
+        if: always()
+        run: docker stop misskey-ci 2>/dev/null || true
 
-          echo "==> ffmpeg"
-          docker run --rm --entrypoint /usr/local/bin/ffmpeg $IMAGE -version
+  promote:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          echo "==> tini + node"
-          docker run --rm --entrypoint /tini $IMAGE -- /nodejs/bin/node -e "process.exit(0)"
+      - uses: docker/setup-buildx-action@v3
 
       - name: Promote to latest
         run: |
           docker buildx imagetools create \
             --tag ghcr.io/${{ github.repository }}:latest \
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ needs.build.outputs.image }}

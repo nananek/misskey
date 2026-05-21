@@ -116,6 +116,7 @@ COPY --chown=65532:65532 --from=native-builder /misskey/packages/misskey-reversi
 COPY --chown=65532:65532 --from=native-builder /misskey/packages/misskey-bubble-game/built        ./packages/misskey-bubble-game/built
 COPY --chown=65532:65532 --from=native-builder /misskey/packages/backend/built                    ./packages/backend/built
 COPY --chown=65532:65532 --from=native-builder /misskey/packages/i18n/built                       ./packages/i18n/built
+COPY --chown=65532:65532 --from=native-builder /misskey/packages/frontend/assets ./packages/frontend/assets
 COPY --chown=65532:65532 ["packages/backend/ormconfig.js",              "./packages/backend/"]
 COPY --chown=65532:65532 ["packages/backend/migration",                 "./packages/backend/migration"]
 COPY --chown=65532:65532 ["packages/backend/assets",                    "./packages/backend/assets"]

@@ -27,10 +27,39 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push (SHA tag)
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          echo "==> node binary"
+          docker run --rm --entrypoint /nodejs/bin/node $IMAGE --version
+
+          echo "==> docker-start.js syntax"
+          docker run --rm --entrypoint /nodejs/bin/node $IMAGE --check /misskey/scripts/docker-start.js
+
+          echo "==> healthcheck.js syntax"
+          docker run --rm --entrypoint /nodejs/bin/node $IMAGE --check /misskey/healthcheck.js
+
+          echo "==> ffmpeg"
+          docker run --rm --entrypoint /usr/local/bin/ffmpeg $IMAGE -version
+
+          echo "==> tini + node"
+          docker run --rm --entrypoint /tini $IMAGE -- /nodejs/bin/node -e "process.exit(0)"
+
+      - name: Promote to latest
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/${{ github.repository }}:latest \
+            ghcr.io/${{ github.repository }}:${{ github.sha }}

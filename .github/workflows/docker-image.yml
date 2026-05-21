@@ -119,7 +119,7 @@ jobs:
         run: docker stop misskey-ci 2>/dev/null || true
 
   promote:
-    needs: verify
+    needs: [build, verify]
     runs-on: ubuntu-latest
     permissions:
       packages: write

@@ -18,6 +18,7 @@ import { DI } from '@/di-symbols.js';
 import type Logger from '@/logger.js';
 import * as Acct from '@/misc/acct.js';
 import { genIdenticon } from '@/misc/gen-identicon.js';
+import { isSafeProxyRedirectUrl } from '@/misc/is-safe-proxy-redirect.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import { bindThis } from '@/decorators.js';
@@ -40,6 +41,7 @@ const _dirname = fileURLToPath(new URL('.', import.meta.url));
 export class ServerService implements OnApplicationShutdown {
 	private logger: Logger;
 	#fastify: FastifyInstance;
+	#mediaProxyOrigin: string;
 
 	constructor(
 		@Inject(DI.config)
@@ -72,6 +74,7 @@ export class ServerService implements OnApplicationShutdown {
 		private oauth2ProviderService: OAuth2ProviderService,
 	) {
 		this.logger = this.loggerService.getLogger('server', 'gray');
+		this.#mediaProxyOrigin = new URL(this.config.mediaProxy).origin;
 	}
 
 	@bindThis
@@ -212,6 +215,11 @@ export class ServerService implements OnApplicationShutdown {
 				url.searchParams.set('url', emoji.publicUrl || emoji.originalUrl);
 				url.searchParams.set('emoji', '1');
 				if ('static' in request.query) url.searchParams.set('static', '1');
+			}
+
+			if (!isSafeProxyRedirectUrl(url, this.#mediaProxyOrigin)) {
+				reply.code(404);
+				return;
 			}
 
 			return await reply.redirect(

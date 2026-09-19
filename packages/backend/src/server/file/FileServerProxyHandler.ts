@@ -12,6 +12,7 @@ import { StatusError } from '@/misc/status-error.js';
 import { contentDisposition } from '@/misc/content-disposition.js';
 import { correctFilename } from '@/misc/correct-filename.js';
 import { isMimeImage } from '@/misc/is-mime-image.js';
+import { isSafeProxyRedirectUrl } from '@/misc/is-safe-proxy-redirect.js';
 import { IImageStreamable, ImageProcessingService, webpDefault } from '@/core/ImageProcessingService.js';
 import { createRangeStream, attachStreamCleanup, needsCleanup } from './FileServerUtils.js';
 import type { DownloadedFileResult, FileResolveResult, FileServerFileResolver } from './FileServerFileResolver.js';
@@ -31,12 +32,16 @@ type ProxyQuery = {
 };
 
 export class FileServerProxyHandler {
+	private readonly mediaProxyOrigin: string;
+
 	constructor(
 		private config: Config,
 		private fileResolver: FileServerFileResolver,
 		private assetsPath: string,
 		private imageProcessingService: ImageProcessingService,
-	) {}
+	) {
+		this.mediaProxyOrigin = new URL(this.config.mediaProxy).origin;
+	}
 
 	public async handle(request: FastifyRequest<{ Params: { url: string }; Querystring: ProxyQuery }>, reply: FastifyReply) {
 		const url = 'url' in request.query ? request.query.url : 'https://' + request.params.url;
@@ -104,6 +109,11 @@ export class FileServerProxyHandler {
 
 		for (const [key, value] of Object.entries(request.query)) {
 			url.searchParams.append(key, value);
+		}
+
+		if (!isSafeProxyRedirectUrl(url, this.mediaProxyOrigin)) {
+			reply.code(404);
+			return;
 		}
 
 		return reply.redirect(url.toString(), 301);

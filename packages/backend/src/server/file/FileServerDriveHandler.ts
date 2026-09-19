@@ -10,18 +10,25 @@ import type { IImageStreamable } from '@/core/ImageProcessingService.js';
 import { contentDisposition } from '@/misc/content-disposition.js';
 import { correctFilename } from '@/misc/correct-filename.js';
 import { isMimeImage } from '@/misc/is-mime-image.js';
+import { isSafeProxyRedirectUrl } from '@/misc/is-safe-proxy-redirect.js';
 import { VideoProcessingService } from '@/core/VideoProcessingService.js';
 import { attachStreamCleanup, handleRangeRequest, setFileResponseHeaders, getSafeContentType, needsCleanup } from './FileServerUtils.js';
 import type { FileServerFileResolver } from './FileServerFileResolver.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 export class FileServerDriveHandler {
+	private readonly mediaProxyOrigin: string;
+	private readonly videoThumbnailGeneratorOrigin: string | null;
+
 	constructor(
 		private config: Config,
 		private fileResolver: FileServerFileResolver,
 		private assetsPath: string,
 		private videoProcessingService: VideoProcessingService,
-	) {}
+	) {
+		this.mediaProxyOrigin = new URL(this.config.mediaProxy).origin;
+		this.videoThumbnailGeneratorOrigin = this.config.videoThumbnailGenerator ? new URL(this.config.videoThumbnailGenerator).origin : null;
+	}
 
 	public async handle(request: FastifyRequest<{ Params: { key: string } }>, reply: FastifyReply) {
 		const key = request.params.key;
@@ -52,11 +59,19 @@ export class FileServerDriveHandler {
 						url.searchParams.set('static', '1');
 
 						file.cleanup();
+						if (!isSafeProxyRedirectUrl(url, this.mediaProxyOrigin)) {
+							reply.code(404);
+							return;
+						}
 						return await reply.redirect(url.toString(), 301);
 					} else if (file.mime.startsWith('video/')) {
 						const externalThumbnail = this.videoProcessingService.getExternalVideoThumbnailUrl(file.url);
 						if (externalThumbnail) {
 							file.cleanup();
+							if (!this.videoThumbnailGeneratorOrigin || !isSafeProxyRedirectUrl(externalThumbnail, this.videoThumbnailGeneratorOrigin)) {
+								reply.code(404);
+								return;
+							}
 							return await reply.redirect(externalThumbnail, 301);
 						}
 
@@ -72,6 +87,10 @@ export class FileServerDriveHandler {
 						url.searchParams.set('url', file.url);
 
 						file.cleanup();
+						if (!isSafeProxyRedirectUrl(url, this.mediaProxyOrigin)) {
+							reply.code(404);
+							return;
+						}
 						return await reply.redirect(url.toString(), 301);
 					}
 				}

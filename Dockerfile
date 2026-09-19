@@ -95,7 +95,36 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& apt-get update \
 	&& apt-get install -y --no-install-recommends tini
 
+# distroless has no shell/useradd, so we cannot create a "misskey" user in the runner
+# stage directly like upstream does. Instead, pre-render /etc/passwd and /etc/group
+# here (where a shell is available) with a build-arg-configurable UID/GID, defaulting
+# to 991 to match upstream and pre-existing bind-mounted data directories. Naming the
+# user "misskey" (same as upstream) lets COPY --chown=misskey:misskey lines merge from
+# upstream verbatim, without rewriting the UID/GID on every sync.
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-slim AS passwd-provider
+ARG UID="991"
+ARG GID="991"
+RUN printf '%s\n' \
+	'root:x:0:0:root:/root:/sbin/nologin' \
+	'nobody:x:65534:65534:nobody:/nonexistent:/sbin/nologin' \
+	'nonroot:x:65532:65532:nonroot:/home/nonroot:/sbin/nologin' \
+	"misskey:x:${UID}:${GID}:misskey:/misskey:/sbin/nologin" \
+	> /passwd \
+	&& printf '%s\n' \
+	'root:x:0:' \
+	'nobody:x:65534:' \
+	'tty:x:5:' \
+	'staff:x:50:' \
+	'nonroot:x:65532:' \
+	"misskey:x:${GID}:" \
+	> /group
+
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runner
+
+COPY --from=passwd-provider /passwd /etc/passwd
+COPY --from=passwd-provider /group  /etc/group
+
+USER misskey
 
 COPY --from=tini-provider     /usr/bin/tini       /tini
 COPY --from=ffmpeg            /ffmpeg             /usr/local/bin/ffmpeg
@@ -104,24 +133,24 @@ COPY --from=jemalloc-provider /libjemalloc.so.2   /usr/lib/libjemalloc.so.2
 
 WORKDIR /misskey
 
-COPY --chown=65532:65532 --from=target-builder /misskey/node_modules                              ./node_modules
-COPY --chown=65532:65532 --from=target-builder /misskey/packages/backend/node_modules             ./packages/backend/node_modules
-COPY --chown=65532:65532 --from=target-builder /misskey/packages/misskey-js/node_modules          ./packages/misskey-js/node_modules
-COPY --chown=65532:65532 --from=target-builder /misskey/packages/misskey-reversi/node_modules     ./packages/misskey-reversi/node_modules
-COPY --chown=65532:65532 --from=target-builder /misskey/packages/misskey-bubble-game/node_modules ./packages/misskey-bubble-game/node_modules
-COPY --chown=65532:65532 --from=native-builder /misskey/built                                     ./built
-COPY --chown=65532:65532 --from=native-builder /misskey/packages/misskey-js/built                 ./packages/misskey-js/built
-COPY --chown=65532:65532 --from=native-builder /misskey/packages/misskey-reversi/built            ./packages/misskey-reversi/built
-COPY --chown=65532:65532 --from=native-builder /misskey/packages/misskey-bubble-game/built        ./packages/misskey-bubble-game/built
-COPY --chown=65532:65532 --from=native-builder /misskey/packages/backend/built                    ./packages/backend/built
-COPY --chown=65532:65532 --from=native-builder /misskey/packages/i18n/built                       ./packages/i18n/built
-COPY --chown=65532:65532 --from=native-builder /misskey/packages/frontend/assets ./packages/frontend/assets
-COPY --chown=65532:65532 ["packages/backend/ormconfig.js",              "./packages/backend/"]
-COPY --chown=65532:65532 ["packages/backend/migration",                 "./packages/backend/migration"]
-COPY --chown=65532:65532 ["packages/backend/assets",                    "./packages/backend/assets"]
-COPY --chown=65532:65532 ["packages/backend/scripts/compile_config.js", "./packages/backend/scripts/"]
-COPY --chown=65532:65532 ["scripts/docker-start.js",                    "./scripts/"]
-COPY --chown=65532:65532 ["healthcheck.js",                             "./"]
+COPY --chown=misskey:misskey --from=target-builder /misskey/node_modules                              ./node_modules
+COPY --chown=misskey:misskey --from=target-builder /misskey/packages/backend/node_modules             ./packages/backend/node_modules
+COPY --chown=misskey:misskey --from=target-builder /misskey/packages/misskey-js/node_modules          ./packages/misskey-js/node_modules
+COPY --chown=misskey:misskey --from=target-builder /misskey/packages/misskey-reversi/node_modules     ./packages/misskey-reversi/node_modules
+COPY --chown=misskey:misskey --from=target-builder /misskey/packages/misskey-bubble-game/node_modules ./packages/misskey-bubble-game/node_modules
+COPY --chown=misskey:misskey --from=native-builder /misskey/built                                     ./built
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/misskey-js/built                 ./packages/misskey-js/built
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/misskey-reversi/built            ./packages/misskey-reversi/built
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/misskey-bubble-game/built        ./packages/misskey-bubble-game/built
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/built                    ./packages/backend/built
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/i18n/built                       ./packages/i18n/built
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/frontend/assets ./packages/frontend/assets
+COPY --chown=misskey:misskey ["packages/backend/ormconfig.js",              "./packages/backend/"]
+COPY --chown=misskey:misskey ["packages/backend/migration",                 "./packages/backend/migration"]
+COPY --chown=misskey:misskey ["packages/backend/assets",                    "./packages/backend/assets"]
+COPY --chown=misskey:misskey ["packages/backend/scripts/compile_config.js", "./packages/backend/scripts/"]
+COPY --chown=misskey:misskey ["scripts/docker-start.js",                    "./scripts/"]
+COPY --chown=misskey:misskey ["healthcheck.js",                             "./"]
 
 ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 ENV NODE_ENV=production

@@ -300,6 +300,7 @@ export function createPostgresDataSource(config: Config) {
 			options: {
 				host: config.redis.host,
 				port: config.redis.port,
+				path: config.redis.path,
 				family: config.redis.family ?? 0,
 				password: config.redis.pass,
 				keyPrefix: `${config.redis.prefix}:query:`,

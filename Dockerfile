@@ -119,7 +119,10 @@ RUN printf '%s\n' \
 	"misskey:x:${GID}:" \
 	> /group
 
-FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runner
+# Must match NODE_VERSION in both the Node major (native modules are built against its ABI)
+# and the Debian release (tini / jemalloc / native modules are linked against its glibc).
+# NODE_VERSION=26.x-trixie -> nodejs26-debian13. Bump this together with NODE_VERSION.
+FROM gcr.io/distroless/nodejs26-debian13:nonroot AS runner
 
 COPY --from=passwd-provider /passwd /etc/passwd
 COPY --from=passwd-provider /group  /etc/group

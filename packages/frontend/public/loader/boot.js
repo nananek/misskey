@@ -179,7 +179,7 @@
 				<path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75"></path>
 			</svg>
 			<h1>${messages.title}</h1>
-			<button class="button-big" onclick="location.reload(true);">
+			<button class="button-big" id="boot-reload-button">
 				<span class="button-label-big">${messages?.reload}</span>
 			</button>
 			<p><b>${messages.solution}</b></p>
@@ -217,6 +217,13 @@
 			<div id="errors"></div>
 			`;
 			errorsElement = document.getElementById('errors');
+			// `onclick` attribute is an inline event handler and gets blocked under a
+			// strict script-src CSP (no 'unsafe-inline' / 'unsafe-hashes'). This is the
+			// only way out of the "Failed to initialize" screen, so it must not depend
+			// on inline script execution being allowed.
+			document.getElementById('boot-reload-button')?.addEventListener('click', () => {
+				location.reload(true);
+			});
 		}
 		const detailsElement = document.createElement('details');
 		detailsElement.id = 'errorInfo';

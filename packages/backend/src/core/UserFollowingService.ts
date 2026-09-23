@@ -376,11 +376,16 @@ export class UserFollowingService implements OnModuleInit {
 			return;
 		}
 
-		await this.followingsRepository.delete(following.id);
+		const result = await this.followingsRepository.delete(following.id);
+
+		if (result.affected !== 1) {
+			logger.warn('フォロー解除がリクエストされましたがフォローしていませんでした');
+			return;
+		}
 
 		this.cacheService.userFollowingsCache.refresh(follower.id);
 
-		this.decrementFollowing(following.follower, following.followee);
+		await this.decrementFollowing(following.follower, following.followee);
 
 		if (!silent && this.userEntityService.isLocalUser(follower)) {
 			// Publish unfollow event
@@ -697,9 +702,11 @@ export class UserFollowingService implements OnModuleInit {
 
 		if (!following || !following.followee || !following.follower) return;
 
-		await this.followingsRepository.delete(following.id);
+		const result = await this.followingsRepository.delete(following.id);
 
-		this.decrementFollowing(following.follower, following.followee);
+		if (result.affected !== 1) return;
+
+		await this.decrementFollowing(following.follower, following.followee);
 	}
 
 	/**

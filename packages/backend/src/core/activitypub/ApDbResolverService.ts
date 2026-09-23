@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
+import * as Redis from 'ioredis';
 import { DI } from '@/di-symbols.js';
 import type { NotesRepository, UserPublickeysRepository, UsersRepository } from '@/models/_.js';
 import type { Config } from '@/config.js';
 import { MemoryKVCache } from '@/misc/cache.js';
 import type { MiUserPublickey } from '@/models/UserPublickey.js';
 import { CacheService } from '@/core/CacheService.js';
+import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import type { MiNote } from '@/models/Note.js';
 import { bindThis } from '@/decorators.js';
@@ -35,7 +37,7 @@ export type UriParseResult = {
 };
 
 @Injectable()
-export class ApDbResolverService implements OnApplicationShutdown {
+export class ApDbResolverService implements OnModuleInit, OnApplicationShutdown {
 	private publicKeyCache: MemoryKVCache<MiUserPublickey | null>;
 	private publicKeyByUserIdCache: MemoryKVCache<MiUserPublickey | null>;
 
@@ -52,12 +54,36 @@ export class ApDbResolverService implements OnApplicationShutdown {
 		@Inject(DI.userPublickeysRepository)
 		private userPublickeysRepository: UserPublickeysRepository,
 
+		@Inject(DI.redisForSub)
+		private redisForSub: Redis.Redis,
+
 		private cacheService: CacheService,
 		private apPersonService: ApPersonService,
 		private utilityService: UtilityService,
 	) {
 		this.publicKeyCache = new MemoryKVCache<MiUserPublickey | null>(1000 * 60 * 60 * 12); // 12h
 		this.publicKeyByUserIdCache = new MemoryKVCache<MiUserPublickey | null>(1000 * 60 * 60 * 12); // 12h
+	}
+
+	@bindThis
+	public onModuleInit(): void {
+		this.redisForSub.on('message', this.onMessage);
+	}
+
+	@bindThis
+	private onMessage(_: string, data: string): void {
+		const obj = JSON.parse(data);
+
+		if (obj.channel !== 'internal') return;
+
+		const { type, body } = obj.message as GlobalEvents['internal']['payload'];
+		if (type !== 'remoteUserUpdated' || body.keyIds == null) return;
+
+		// 鍵が更新されている可能性があるため、該当ユーザーの鍵キャッシュを無効化する
+		this.publicKeyByUserIdCache.delete(body.id);
+		for (const keyId of body.keyIds) {
+			this.publicKeyCache.delete(keyId);
+		}
 	}
 
 	@bindThis
@@ -175,6 +201,7 @@ export class ApDbResolverService implements OnApplicationShutdown {
 
 	@bindThis
 	public dispose(): void {
+		this.redisForSub.off('message', this.onMessage);
 		this.publicKeyCache.dispose();
 		this.publicKeyByUserIdCache.dispose();
 	}

@@ -43,10 +43,16 @@ export class FileServerProxyHandler {
 		this.mediaProxyOrigin = new URL(this.config.mediaProxy).origin;
 	}
 
-	public async handle(request: FastifyRequest<{ Params: { url: string }; Querystring: ProxyQuery }>, reply: FastifyReply) {
-		const url = 'url' in request.query ? request.query.url : 'https://' + request.params.url;
+	public async handle(request: FastifyRequest<{ Params: { '*': string }; Querystring: ProxyQuery }>, reply: FastifyReply) {
+		const url = 'url' in request.query ? request.query.url : 'https://' + request.params['*'];
 
-		if (typeof url !== 'string') {
+		if (typeof url !== 'string' || !URL.canParse(url)) {
+			reply.code(400);
+			return;
+		}
+
+		const parsedUrl = new URL(url);
+		if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
 			reply.code(400);
 			return;
 		}
@@ -100,12 +106,12 @@ export class FileServerProxyHandler {
 	 * 外部メディアプロキシにリダイレクトする
 	 */
 	private async redirectToExternalProxy(
-		request: FastifyRequest<{ Params: { url: string }; Querystring: ProxyQuery }>,
+		request: FastifyRequest<{ Params: { '*': string }; Querystring: ProxyQuery }>,
 		reply: FastifyReply,
 	) {
 		reply.header('Cache-Control', 'public, max-age=259200'); // 3 days
 
-		const url = new URL(`${this.config.mediaProxy}/${request.params.url || ''}`);
+		const url = new URL(`${this.config.mediaProxy}/${request.params['*'] || ''}`);
 
 		for (const [key, value] of Object.entries(request.query)) {
 			url.searchParams.append(key, value);
@@ -136,7 +142,7 @@ export class FileServerProxyHandler {
 	 */
 	private async processImage(
 		file: AvailableFile,
-		request: FastifyRequest<{ Params: { url: string }; Querystring: ProxyQuery }>,
+		request: FastifyRequest<{ Params: { '*': string }; Querystring: ProxyQuery }>,
 		reply: FastifyReply,
 	): Promise<IImageStreamable> {
 		const query = request.query;
@@ -248,18 +254,19 @@ export class FileServerProxyHandler {
 		reply: FastifyReply,
 	): IImageStreamable {
 		if (request.headers.range && 'file' in file && file.file.size > 0) {
-			const { stream, start, end, chunksize } = createRangeStream(request.headers.range as string, file.file.size, file.path);
+			const range = createRangeStream(request.headers.range as string, file.file.size, file.path);
+			if (range != null) {
+				reply.header('Content-Range', `bytes ${range.start}-${range.end}/${file.file.size}`);
+				reply.header('Accept-Ranges', 'bytes');
+				reply.header('Content-Length', range.chunksize);
+				reply.code(206);
 
-			reply.header('Content-Range', `bytes ${start}-${end}/${file.file.size}`);
-			reply.header('Accept-Ranges', 'bytes');
-			reply.header('Content-Length', chunksize);
-			reply.code(206);
-
-			return {
-				data: stream,
-				ext: file.ext,
-				type: file.mime,
-			};
+				return {
+					data: range.stream,
+					ext: file.ext,
+					type: file.mime,
+				};
+			}
 		}
 
 		return {

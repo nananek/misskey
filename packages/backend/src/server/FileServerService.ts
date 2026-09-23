@@ -101,9 +101,9 @@ export class FileServerService {
 		});
 
 		fastify.get<{
-			Params: { url: string; };
+			Params: { '*': string; };
 			Querystring: { url?: string; };
-		}>('/proxy/:url*', async (request, reply) => {
+		}>('/proxy/*', async (request, reply) => {
 			return await this.proxyHandler.handle(request, reply)
 				.catch(err => this.errorHandler(request, reply, err));
 		});

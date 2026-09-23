@@ -227,7 +227,7 @@ export interface InternalEventTypes {
 	userChangeSuspendedState: { id: MiUser['id']; isSuspended: MiUser['isSuspended']; };
 	userChangeDeletedState: { id: MiUser['id']; isDeleted: MiUser['isDeleted']; };
 	userTokenRegenerated: { id: MiUser['id']; oldToken: string; newToken: string; };
-	remoteUserUpdated: { id: MiUser['id']; };
+	remoteUserUpdated: { id: MiUser['id']; keyIds?: string[]; };
 	localUserUpdated: { id: MiUser['id']; };
 	follow: { followerId: MiUser['id']; followeeId: MiUser['id']; };
 	unfollow: { followerId: MiUser['id']; followeeId: MiUser['id']; };

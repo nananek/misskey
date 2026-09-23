@@ -16,6 +16,7 @@ import { toArray, toSingle, unique } from '@/misc/prelude/array.js';
 import type { MiEmoji } from '@/models/Emoji.js';
 import type { MiDriveFile } from '@/models/DriveFile.js';
 import { NoteCreateService } from '@/core/NoteCreateService.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import type Logger from '@/logger.js';
 import { IdService } from '@/core/IdService.js';
 import { PollService } from '@/core/PollService.js';
@@ -72,6 +73,7 @@ export class ApNoteService {
 		private apImageService: ApImageService,
 		private apQuestionService: ApQuestionService,
 		private pollService: PollService,
+		private noteEntityService: NoteEntityService,
 		private noteCreateService: NoteCreateService,
 		private apDbResolverService: ApDbResolverService,
 		private apLoggerService: ApLoggerService,
@@ -251,6 +253,11 @@ export class ApNoteService {
 					throw err;
 				})
 			: null;
+
+		// リプライ先が閲覧できない場合は無効な Note として扱う
+		if (reply != null && !(await this.noteEntityService.isVisibleForMe(reply, actor.id))) {
+			throw new IdentifiableError('d450b8a9-48e4-4dab-ae36-f4db763fda7c', 'invalid Note: inReplyTo is not visible');
+		}
 
 		// 引用
 		let quote: MiNote | undefined | null = null;

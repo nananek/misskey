@@ -17,15 +17,44 @@ export type RangeStream = {
 };
 
 /**
- * Range リクエストに対応したストリームを作成する
+ * Range ヘッダーを解釈する。不正な場合は null を返す
  */
-export function createRangeStream(rangeHeader: string, size: number, path: string): RangeStream {
-	const parts = rangeHeader.replace(/bytes=/, '').split('-');
-	const start = parseInt(parts[0], 10);
-	let end = parts[1] ? parseInt(parts[1], 10) : size - 1;
-	if (end > size) {
+export function parseRangeHeader(rangeHeader: string, size: number): { start: number; end: number } | null {
+	const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+	if (match == null) return null;
+
+	const startStr = match[1];
+	const endStr = match[2];
+	if (startStr === '' && endStr === '') return null;
+
+	let start: number;
+	let end: number;
+
+	if (startStr === '') {
+		// 末尾からのバイト数指定
+		const suffix = Number(endStr);
+		if (!Number.isSafeInteger(suffix) || suffix <= 0) return null;
+		start = Math.max(0, size - suffix);
 		end = size - 1;
+	} else {
+		start = Number(startStr);
+		if (!Number.isSafeInteger(start) || start >= size) return null;
+		end = endStr === '' ? size - 1 : Number(endStr);
+		if (!Number.isSafeInteger(end) || end < start) return null;
+		end = Math.min(end, size - 1);
 	}
+
+	return { start, end };
+}
+
+/**
+ * Range リクエストに対応したストリームを作成する。不正な Range の場合は null を返す
+ */
+export function createRangeStream(rangeHeader: string, size: number, path: string): RangeStream | null {
+	const range = parseRangeHeader(rangeHeader, size);
+	if (range == null) return null;
+
+	const { start, end } = range;
 	const chunksize = end - start + 1;
 
 	return {
@@ -67,12 +96,14 @@ export function handleRangeRequest(
 	path: string,
 ): fs.ReadStream {
 	if (rangeHeader && size > 0) {
-		const { stream, start, end, chunksize } = createRangeStream(rangeHeader, size, path);
-		reply.header('Content-Range', `bytes ${start}-${end}/${size}`);
-		reply.header('Accept-Ranges', 'bytes');
-		reply.header('Content-Length', chunksize);
-		reply.code(206);
-		return stream;
+		const range = createRangeStream(rangeHeader, size, path);
+		if (range != null) {
+			reply.header('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
+			reply.header('Accept-Ranges', 'bytes');
+			reply.header('Content-Length', range.chunksize);
+			reply.code(206);
+			return range.stream;
+		}
 	}
 	return fs.createReadStream(path);
 }

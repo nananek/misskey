@@ -74,21 +74,40 @@ export class RelayService {
 	}
 
 	@bindThis
-	public async relayAccepted(id: string): Promise<string> {
+	public async relayAccepted(id: string, actor: { host: string | null }): Promise<string> {
+		return await this.updateRelayStatus(id, actor, 'accepted');
+	}
+
+	@bindThis
+	public async relayRejected(id: string, actor: { host: string | null }): Promise<string> {
+		return await this.updateRelayStatus(id, actor, 'rejected');
+	}
+
+	@bindThis
+	private async updateRelayStatus(id: string, actor: { host: string | null }, status: 'accepted' | 'rejected'): Promise<string> {
+		const relay = await this.relaysRepository.findOneBy({ id });
+
+		if (relay == null) return 'skip: relay not found';
+		if (relay.status !== 'requesting') return 'skip: relay is not requesting';
+		if (!this.isRelaySigner(relay.inbox, actor)) return 'skip: invalid relay signer';
+
 		const result = await this.relaysRepository.update(id, {
-			status: 'accepted',
+			status,
 		});
 
 		return JSON.stringify(result);
 	}
 
 	@bindThis
-	public async relayRejected(id: string): Promise<string> {
-		const result = await this.relaysRepository.update(id, {
-			status: 'rejected',
-		});
+	private isRelaySigner(inbox: string, actor: { host: string | null }): boolean {
+		if (actor.host == null) return false;
 
-		return JSON.stringify(result);
+		try {
+			const relayHost = new URL(inbox);
+			return relayHost.host === actor.host || relayHost.hostname === actor.host;
+		} catch {
+			return false;
+		}
 	}
 
 	@bindThis

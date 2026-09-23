@@ -88,12 +88,14 @@ export class RelayService {
 		const relay = await this.relaysRepository.findOneBy({ id });
 
 		if (relay == null) return 'skip: relay not found';
-		if (relay.status !== 'requesting') return 'skip: relay is not requesting';
 		if (!this.isRelaySigner(relay.inbox, actor)) return 'skip: invalid relay signer';
 
-		const result = await this.relaysRepository.update(id, {
+		// 状態遷移は条件付き更新で行い、並行して届いた Accept / Reject の後勝ちを防ぐ
+		const result = await this.relaysRepository.update({ id, status: 'requesting' }, {
 			status,
 		});
+
+		if (result.affected === 0) return 'skip: relay is not requesting';
 
 		return JSON.stringify(result);
 	}

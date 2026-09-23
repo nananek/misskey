@@ -95,6 +95,15 @@ export class ServerService implements OnApplicationShutdown {
 			});
 		}
 
+		// NUL バイトを含むリクエストは DB エラーを引き起こすため早期に拒否する
+		fastify.addHook('onRequest', (request, reply, done) => {
+			if (request.raw.url != null && request.raw.url.includes('%00')) {
+				reply.code(400).send();
+				return;
+			}
+			done();
+		});
+
 		// for test
 		if (envOption.enableCrossOriginIsolation) {
 			fastify.addHook('onRequest', (request, reply, done) => {

@@ -608,8 +608,10 @@ export class ApPersonService implements OnModuleInit {
 				keyPem: person.publicKey.publicKeyPem,
 			});
 
-			// 更新前後どちらの keyId でキャッシュされていても無効化できるようにする
-			updatedKeyIds = [...new Set([previousKey?.keyId, person.publicKey.id].filter((x): x is string => x != null))];
+			if (previousKey == null || previousKey.keyId !== person.publicKey.id || previousKey.keyPem !== person.publicKey.publicKeyPem) {
+				// 更新前後どちらの keyId でキャッシュされていても無効化できるようにする
+				updatedKeyIds = [...new Set([previousKey?.keyId, person.publicKey.id].filter((x): x is string => x != null))];
+			}
 		}
 
 		let _description: string | null = null;

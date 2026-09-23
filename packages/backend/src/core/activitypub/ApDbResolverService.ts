@@ -201,6 +201,7 @@ export class ApDbResolverService implements OnModuleInit, OnApplicationShutdown 
 
 	@bindThis
 	public dispose(): void {
+		this.redisForSub.off('message', this.onMessage);
 		this.publicKeyCache.dispose();
 		this.publicKeyByUserIdCache.dispose();
 	}

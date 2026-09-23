@@ -734,7 +734,7 @@ export class ApPersonService implements OnModuleInit {
 			let td = 0;
 			for (const note of featuredNotes.filter(x => x != null)) {
 				td -= 1000;
-				transactionalEntityManager.insert(MiUserNotePining, {
+				await transactionalEntityManager.insert(MiUserNotePining, {
 					id: this.idService.gen(Date.now() + td),
 					userId: user.id,
 					noteId: note.id,

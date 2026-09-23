@@ -840,7 +840,11 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			const note = await this.notesRepository.findOneBy({ id: reaction.noteId });
+			const note = await this.notesRepository.findOneBy({
+				id: reaction.noteId,
+				visibility: In(['public', 'home']),
+				localOnly: false,
+			});
 
 			if (note == null) {
 				reply.code(404);

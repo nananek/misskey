@@ -470,6 +470,15 @@ export class ActivityPubServerService {
 			return;
 		}
 
+		// 表示対象のノートのみを数える
+		const visibleNotesCount = await this.notesRepository.count({
+			where: {
+				userId: user.id,
+				visibility: In(['public', 'home']),
+				localOnly: false,
+			},
+		});
+
 		const limit = 20;
 		const partOf = `${this.config.url}/users/${userId}/outbox`;
 
@@ -516,7 +525,7 @@ export class ActivityPubServerService {
 					since_id: sinceId,
 					until_id: untilId,
 				})}`,
-				user.notesCount, activities, partOf,
+				visibleNotesCount, activities, partOf,
 				notes.length ? `${partOf}?${url.query({
 					page: 'true',
 					since_id: notes[0].id,
@@ -533,7 +542,7 @@ export class ActivityPubServerService {
 			// index page
 			const rendered = this.apRendererService.renderOrderedCollection(
 				partOf,
-				user.notesCount,
+				visibleNotesCount,
 				`${partOf}?page=true`,
 				`${partOf}?page=true&since_id=000000000000000000000000`,
 			);

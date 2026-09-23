@@ -324,6 +324,23 @@ export async function isNoteUpdatedEventFired(
 	// 先にイベントを受け取った場合でもタイマーが残り続けないよう、必ず解除する
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
+		// NOTE: `s` は WebSocket が接続されるまで送信キューに積まれるため、接続確立前に
+		//       trigger すると、削除に伴う noteUpdated の publish が購読登録より先に
+		//       起きてイベントを取りこぼすことがある（federation test の flake）。
+		//       接続確立を待ってから購読し、サーバーが購読を処理する猶予を置いてから
+		//       trigger する。
+		await new Promise<void>((resolve) => {
+			if (stream.state === 'connected') {
+				resolve();
+				return;
+			}
+			const connectTimer = setTimeout(resolve, timeout);
+			stream.once('_connected_', () => {
+				clearTimeout(connectTimer);
+				resolve();
+			});
+		});
+
 		stream.send('s', { id: noteId });
 
 		const receivePromise = new Promise<boolean>((resolve) => {
@@ -333,6 +350,8 @@ export async function isNoteUpdatedEventFired(
 				}
 			});
 		});
+
+		await sleep();
 
 		await trigger();
 

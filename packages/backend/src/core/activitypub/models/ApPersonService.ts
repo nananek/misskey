@@ -624,7 +624,7 @@ export class ApPersonService implements OnModuleInit {
 			location: person['vcard:Address'] ?? null,
 		});
 
-		this.globalEventService.publishInternalEvent('remoteUserUpdated', { id: exist.id });
+		this.globalEventService.publishInternalEvent('remoteUserUpdated', { id: exist.id, keyId: person.publicKey?.id });
 
 		// ハッシュタグ更新
 		this.hashtagService.updateUsertags(exist, tags);

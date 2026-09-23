@@ -8,6 +8,7 @@ import * as Redis from 'ioredis';
 import type { InstancesRepository } from '@/models/_.js';
 import type { MiInstance } from '@/models/Instance.js';
 import { MemoryKVCache, RedisKVCache } from '@/misc/cache.js';
+import { isDuplicateKeyValueError } from '@/misc/is-duplicate-key-value-error.js';
 import { IdService } from '@/core/IdService.js';
 import { DI } from '@/di-symbols.js';
 import { UtilityService } from '@/core/UtilityService.js';
@@ -56,14 +57,23 @@ export class FederatedInstanceService implements OnApplicationShutdown {
 		const index = await this.instancesRepository.findOneBy({ host });
 
 		if (index == null) {
-			const i = await this.instancesRepository.insertOne({
-				id: this.idService.gen(),
-				host,
-				firstRetrievedAt: new Date(),
-			});
+			try {
+				const i = await this.instancesRepository.insertOne({
+					id: this.idService.gen(),
+					host,
+					firstRetrievedAt: new Date(),
+				});
 
-			this.federatedInstanceCache.set(host, i);
-			return i;
+				this.federatedInstanceCache.set(host, i);
+				return i;
+			} catch (e) {
+				if (!isDuplicateKeyValueError(e)) throw e;
+
+				// 同時に登録された場合は既存の行を返す
+				const i = await this.instancesRepository.findOneByOrFail({ host });
+				this.federatedInstanceCache.set(host, i);
+				return i;
+			}
 		} else {
 			this.federatedInstanceCache.set(host, index);
 			return index;

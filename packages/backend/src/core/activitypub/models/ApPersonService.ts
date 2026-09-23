@@ -598,11 +598,18 @@ export class ApPersonService implements OnModuleInit {
 			return 'skip';
 		}
 
+		let updatedKeyIds: string[] | undefined;
+
 		if (person.publicKey) {
+			const previousKey = await this.userPublickeysRepository.findOneBy({ userId: exist.id });
+
 			await this.userPublickeysRepository.update({ userId: exist.id }, {
 				keyId: person.publicKey.id,
 				keyPem: person.publicKey.publicKeyPem,
 			});
+
+			// 更新前後どちらの keyId でキャッシュされていても無効化できるようにする
+			updatedKeyIds = [...new Set([previousKey?.keyId, person.publicKey.id].filter((x): x is string => x != null))];
 		}
 
 		let _description: string | null = null;
@@ -624,7 +631,7 @@ export class ApPersonService implements OnModuleInit {
 			location: person['vcard:Address'] ?? null,
 		});
 
-		this.globalEventService.publishInternalEvent('remoteUserUpdated', { id: exist.id, keyId: person.publicKey?.id });
+		this.globalEventService.publishInternalEvent('remoteUserUpdated', { id: exist.id, keyIds: updatedKeyIds });
 
 		// ハッシュタグ更新
 		this.hashtagService.updateUsertags(exist, tags);

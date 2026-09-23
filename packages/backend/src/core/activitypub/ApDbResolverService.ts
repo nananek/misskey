@@ -77,12 +77,12 @@ export class ApDbResolverService implements OnModuleInit, OnApplicationShutdown 
 		if (obj.channel !== 'internal') return;
 
 		const { type, body } = obj.message as GlobalEvents['internal']['payload'];
-		if (type !== 'remoteUserUpdated') return;
+		if (type !== 'remoteUserUpdated' || body.keyIds == null) return;
 
 		// 鍵が更新されている可能性があるため、該当ユーザーの鍵キャッシュを無効化する
 		this.publicKeyByUserIdCache.delete(body.id);
-		if (body.keyId != null) {
-			this.publicKeyCache.delete(body.keyId);
+		for (const keyId of body.keyIds) {
+			this.publicKeyCache.delete(keyId);
 		}
 	}
 

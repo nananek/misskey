@@ -212,6 +212,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -309,6 +310,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -395,6 +397,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -463,6 +466,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -589,6 +593,13 @@ export class ActivityPubServerService {
 				reply.code(500);
 				return;
 			}
+
+			// 連合ポリシーで許可されていないホストのアクターは公開しない
+			if (!this.utilityService.isFederationAllowedHost(user.host)) {
+				reply.code(404);
+				return;
+			}
+
 			reply.redirect(user.uri, 301);
 			return;
 		}
@@ -669,13 +680,16 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			const note = await this.notesRepository.findOneBy({
-				id: request.params.note,
-				visibility: In(['public', 'home']),
-				localOnly: false,
+			const note = await this.notesRepository.findOne({
+				where: {
+					id: request.params.note,
+					visibility: In(['public', 'home']),
+					localOnly: false,
+				},
+				relations: { user: true },
 			});
 
-			if (note == null) {
+			if (note == null || note.user?.isSuspended) {
 				reply.code(404);
 				return;
 			}
@@ -686,6 +700,13 @@ export class ActivityPubServerService {
 					reply.code(500);
 					return;
 				}
+
+				// 連合ポリシーで許可されていないホストのノートは公開しない
+				if (!this.utilityService.isFederationAllowedHost(note.userHost)) {
+					reply.code(404);
+					return;
+				}
+
 				reply.redirect(note.uri);
 				return;
 			}
@@ -704,14 +725,17 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			const note = await this.notesRepository.findOneBy({
-				id: request.params.note,
-				userHost: IsNull(),
-				visibility: In(['public', 'home']),
-				localOnly: false,
+			const note = await this.notesRepository.findOne({
+				where: {
+					id: request.params.note,
+					userHost: IsNull(),
+					visibility: In(['public', 'home']),
+					localOnly: false,
+				},
+				relations: { user: true },
 			});
 
-			if (note == null) {
+			if (note == null || note.user?.isSuspended) {
 				reply.code(404);
 				return;
 			}
@@ -754,6 +778,7 @@ export class ActivityPubServerService {
 			const user = await this.usersRepository.findOneBy({
 				id: userId,
 				host: IsNull(),
+				isSuspended: false,
 			});
 
 			if (user == null) {

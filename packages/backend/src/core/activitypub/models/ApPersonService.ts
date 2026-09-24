@@ -5,7 +5,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import promiseLimit from 'promise-limit';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull, type FindOptionsWhere } from 'typeorm';
 import { ModuleRef } from '@nestjs/core';
 import { DI } from '@/di-symbols.js';
 import type { FollowingsRepository, InstancesRepository, MiMeta, UserProfilesRepository, UserPublickeysRepository, UsersRepository } from '@/models/_.js';
@@ -594,7 +594,13 @@ export class ApPersonService implements OnModuleInit {
 		if (moving) updates.movedAt = new Date();
 
 		// Update user
-		if (!(await this.usersRepository.update({ id: exist.id, isDeleted: false }, updates)).affected) {
+		const updateCriteria: FindOptionsWhere<MiUser> = { id: exist.id, isDeleted: false };
+		if (moving) {
+			// 並行して同じ移行を処理しないように、更新前の移行状態を条件に含める
+			updateCriteria.movedToUri = exist.movedToUri == null ? IsNull() : exist.movedToUri;
+			updateCriteria.movedAt = exist.movedAt == null ? IsNull() : exist.movedAt;
+		}
+		if (!(await this.usersRepository.update(updateCriteria, updates)).affected) {
 			return 'skip';
 		}
 

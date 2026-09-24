@@ -4,7 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import type { UsersRepository, PollsRepository, PollVotesRepository } from '@/models/_.js';
+import { MiPoll, MiPollVote, type UsersRepository, type PollsRepository, type PollVotesRepository } from '@/models/_.js';
 import type { MiRemoteUser } from '@/models/User.js';
 import { IdService } from '@/core/IdService.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -117,43 +117,56 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				}
 			}
 
-			const poll = await this.pollsRepository.findOneByOrFail({ noteId: note.id });
+			// 同時投票による重複カウントを防ぐため、poll 行をロックしてトランザクション内で処理する
+			const { poll, vote } = await this.pollsRepository.manager.transaction(async (manager) => {
+				const poll = await manager.getRepository(MiPoll).findOne({
+					where: { noteId: note.id },
+					lock: { mode: 'pessimistic_write' },
+				});
 
-			if (poll.expiresAt && poll.expiresAt < createdAt) {
-				throw new ApiError(meta.errors.alreadyExpired);
-			}
+				if (poll == null) {
+					throw new ApiError(meta.errors.noPoll);
+				}
 
-			if (poll.choices[ps.choice] == null) {
-				throw new ApiError(meta.errors.invalidChoice);
-			}
+				if (poll.expiresAt && poll.expiresAt < createdAt) {
+					throw new ApiError(meta.errors.alreadyExpired);
+				}
 
-			// if already voted
-			const exist = await this.pollVotesRepository.findBy({
-				noteId: note.id,
-				userId: me.id,
-			});
+				if (poll.choices[ps.choice] == null) {
+					throw new ApiError(meta.errors.invalidChoice);
+				}
 
-			if (exist.length) {
-				if (poll.multiple) {
-					if (exist.some(x => x.choice === ps.choice)) {
+				// if already voted
+				const exist = await manager.getRepository(MiPollVote).findBy({
+					noteId: note.id,
+					userId: me.id,
+				});
+
+				if (exist.length) {
+					if (poll.multiple) {
+						if (exist.some(x => x.choice === ps.choice)) {
+							throw new ApiError(meta.errors.alreadyVoted);
+						}
+					} else {
 						throw new ApiError(meta.errors.alreadyVoted);
 					}
-				} else {
-					throw new ApiError(meta.errors.alreadyVoted);
 				}
-			}
 
-			// Create vote
-			const vote = await this.pollVotesRepository.insertOne({
-				id: this.idService.gen(createdAt.getTime()),
-				noteId: note.id,
-				userId: me.id,
-				choice: ps.choice,
+				// Create vote
+				const vote = {
+					id: this.idService.gen(createdAt.getTime()),
+					noteId: note.id,
+					userId: me.id,
+					choice: ps.choice,
+				} as MiPollVote;
+				await manager.getRepository(MiPollVote).insert(vote);
+
+				// Increment votes count
+				const index = ps.choice + 1; // In SQL, array index is 1 based
+				await manager.query('UPDATE poll SET votes[$1] = votes[$1] + 1 WHERE "noteId" = $2', [index, poll.noteId]);
+
+				return { poll, vote };
 			});
-
-			// Increment votes count
-			const index = ps.choice + 1; // In SQL, array index is 1 based
-			await this.pollsRepository.query('UPDATE poll SET votes[$1] = votes[$1] + 1 WHERE "noteId" = $2', [index, poll.noteId]);
 
 			this.globalEventService.publishNoteStream(note, 'pollVoted', {
 				choice: ps.choice,

@@ -20,12 +20,15 @@ import { IdService } from '@/core/IdService.js';
 import { CacheService } from '@/core/CacheService.js';
 import type { Config } from '@/config.js';
 import { UserListService } from '@/core/UserListService.js';
+import { LoggerService } from '@/core/LoggerService.js';
+import type Logger from '@/logger.js';
 import { FilterUnionByProperty, groupedNotificationTypes, obsoleteNotificationTypes } from '@/types.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
 // import { escapeHtml } from '@/misc/escape-html.js';
 
 @Injectable()
 export class NotificationService implements OnApplicationShutdown {
+	private logger: Logger;
 	#shutdownController = new AbortController();
 
 	constructor(
@@ -44,7 +47,9 @@ export class NotificationService implements OnApplicationShutdown {
 		private pushNotificationService: PushNotificationService,
 		private cacheService: CacheService,
 		private userListService: UserListService,
+		private loggerService: LoggerService,
 	) {
+		this.logger = loggerService.getLogger('notification');
 	}
 
 	@bindThis
@@ -197,7 +202,10 @@ export class NotificationService implements OnApplicationShutdown {
 
 			if (type === 'follow') this.emailNotificationFollow(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
 			if (type === 'receiveFollowRequest') this.emailNotificationReceiveFollowRequest(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
-		}, () => { /* aborted, ignore it */ });
+		}, () => { /* aborted, ignore it */ }).catch(err => {
+			/* 未読通知イベントは best-effort。DB切断などで失敗しても通知自体には影響しない */
+			this.logger.debug(`Failed to process unread notification event: ${err}`);
+		});
 
 		return notification;
 	}

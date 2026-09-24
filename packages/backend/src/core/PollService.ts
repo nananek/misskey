@@ -5,7 +5,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
-import type { NotesRepository, UsersRepository, PollsRepository, PollVotesRepository, MiUser } from '@/models/_.js';
+import { MiPoll, MiPollVote, type NotesRepository, type UsersRepository, type PollsRepository, type PollVotesRepository, type MiUser } from '@/models/_.js';
 import type { MiNote } from '@/models/Note.js';
 import { RelayService } from '@/core/RelayService.js';
 import { IdService } from '@/core/IdService.js';
@@ -43,14 +43,7 @@ export class PollService {
 
 	@bindThis
 	public async vote(user: MiUser, note: MiNote, choice: number) {
-		const poll = await this.pollsRepository.findOneBy({ noteId: note.id });
-
-		if (poll == null) throw new Error('poll not found');
-
-		// Check whether is valid choice
-		if (poll.choices[choice] == null) throw new Error('invalid choice param');
-
-		// Check blocking
+		// Check blocking（トランザクション外で行い、poll 行ロックを保持したまま別接続を使わないようにする）
 		if (note.userId !== user.id) {
 			const blocked = await this.userBlockingService.checkBlocked(note.userId, user.id);
 			if (blocked) {
@@ -58,30 +51,43 @@ export class PollService {
 			}
 		}
 
-		// if already voted
-		const exist = await this.pollVotesRepository.findBy({
-			noteId: note.id,
-			userId: user.id,
-		});
+		// 同時投票による重複カウントを防ぐため、poll 行をロックしてトランザクション内で処理する
+		await this.pollsRepository.manager.transaction(async (manager) => {
+			const poll = await manager.getRepository(MiPoll).findOne({
+				where: { noteId: note.id },
+				lock: { mode: 'pessimistic_write' },
+			});
 
-		if (poll.multiple) {
-			if (exist.some(x => x.choice === choice)) {
+			if (poll == null) throw new Error('poll not found');
+
+			// Check whether is valid choice
+			if (poll.choices[choice] == null) throw new Error('invalid choice param');
+
+			// if already voted
+			const exist = await manager.getRepository(MiPollVote).findBy({
+				noteId: note.id,
+				userId: user.id,
+			});
+
+			if (poll.multiple) {
+				if (exist.some(x => x.choice === choice)) {
+					throw new Error('already voted');
+				}
+			} else if (exist.length !== 0) {
 				throw new Error('already voted');
 			}
-		} else if (exist.length !== 0) {
-			throw new Error('already voted');
-		}
 
-		await this.pollVotesRepository.insert({
-			id: this.idService.gen(),
-			noteId: note.id,
-			userId: user.id,
-			choice: choice,
+			await manager.getRepository(MiPollVote).insert({
+				id: this.idService.gen(),
+				noteId: note.id,
+				userId: user.id,
+				choice: choice,
+			});
+
+			// Increment votes count
+			const index = choice + 1; // In SQL, array index is 1 based
+			await manager.query('UPDATE poll SET votes[$1] = votes[$1] + 1 WHERE "noteId" = $2', [index, poll.noteId]);
 		});
-
-		// Increment votes count
-		const index = choice + 1; // In SQL, array index is 1 based
-		await this.pollsRepository.query('UPDATE poll SET votes[$1] = votes[$1] + 1 WHERE "noteId" = $2', [index, poll.noteId]);
 
 		this.globalEventService.publishNoteStream(note, 'pollVoted', {
 			choice: choice,

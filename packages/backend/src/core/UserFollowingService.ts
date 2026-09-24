@@ -623,7 +623,7 @@ export class UserFollowingService implements OnModuleInit {
 
 		for (const request of requests) {
 			const follower = await this.usersRepository.findOneByOrFail({ id: request.followerId });
-			this.acceptFollowRequest(user, follower);
+			await this.acceptFollowRequest(user, follower);
 		}
 	}
 

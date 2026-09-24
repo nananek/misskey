@@ -128,13 +128,6 @@ export class ActivityPubServerService {
 			return;
 		}
 
-		const dateHeader = request.headers.date;
-		if (typeof dateHeader !== 'string' || Number.isNaN(Date.parse(dateHeader))) {
-			// Date not specified or not parseable.
-			reply.code(401);
-			return;
-		}
-
 		if (signature.params.headers.indexOf('digest') === -1) {
 			// Digest not found.
 			reply.code(401);

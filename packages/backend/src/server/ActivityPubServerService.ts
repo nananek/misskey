@@ -128,6 +128,13 @@ export class ActivityPubServerService {
 			return;
 		}
 
+		const dateHeader = request.headers.date;
+		if (typeof dateHeader !== 'string' || Number.isNaN(Date.parse(dateHeader))) {
+			// Date not specified or not parseable.
+			reply.code(401);
+			return;
+		}
+
 		if (signature.params.headers.indexOf('digest') === -1) {
 			// Digest not found.
 			reply.code(401);
@@ -212,6 +219,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -309,6 +317,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -395,6 +404,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -463,6 +473,7 @@ export class ActivityPubServerService {
 		const user = await this.usersRepository.findOneBy({
 			id: userId,
 			host: IsNull(),
+			isSuspended: false,
 		});
 
 		if (user == null) {
@@ -676,13 +687,16 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			const note = await this.notesRepository.findOneBy({
-				id: request.params.note,
-				visibility: In(['public', 'home']),
-				localOnly: false,
+			const note = await this.notesRepository.findOne({
+				where: {
+					id: request.params.note,
+					visibility: In(['public', 'home']),
+					localOnly: false,
+				},
+				relations: { user: true },
 			});
 
-			if (note == null) {
+			if (note == null || note.user?.isSuspended) {
 				reply.code(404);
 				return;
 			}
@@ -718,14 +732,17 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			const note = await this.notesRepository.findOneBy({
-				id: request.params.note,
-				userHost: IsNull(),
-				visibility: In(['public', 'home']),
-				localOnly: false,
+			const note = await this.notesRepository.findOne({
+				where: {
+					id: request.params.note,
+					userHost: IsNull(),
+					visibility: In(['public', 'home']),
+					localOnly: false,
+				},
+				relations: { user: true },
 			});
 
-			if (note == null) {
+			if (note == null || note.user?.isSuspended) {
 				reply.code(404);
 				return;
 			}
@@ -768,6 +785,7 @@ export class ActivityPubServerService {
 			const user = await this.usersRepository.findOneBy({
 				id: userId,
 				host: IsNull(),
+				isSuspended: false,
 			});
 
 			if (user == null) {

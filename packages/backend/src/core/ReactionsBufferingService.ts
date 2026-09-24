@@ -11,6 +11,8 @@ import { bindThis } from '@/decorators.js';
 import type { MiUser, NotesRepository } from '@/models/_.js';
 import type { Config } from '@/config.js';
 import { PER_NOTE_REACTION_USER_PAIR_CACHE_MAX } from '@/const.js';
+import { LoggerService } from '@/core/LoggerService.js';
+import type Logger from '@/logger.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import type { OnApplicationShutdown } from '@nestjs/common';
 
@@ -19,6 +21,8 @@ const REDIS_PAIR_PREFIX = 'reactionsBufferPairs';
 
 @Injectable()
 export class ReactionsBufferingService implements OnApplicationShutdown {
+	private logger: Logger;
+
 	constructor(
 		@Inject(DI.config)
 		private config: Config,
@@ -31,7 +35,10 @@ export class ReactionsBufferingService implements OnApplicationShutdown {
 
 		@Inject(DI.notesRepository)
 		private notesRepository: NotesRepository,
+
+		private loggerService: LoggerService,
 	) {
+		this.logger = loggerService.getLogger('reactionsBuffering');
 		this.redisForSub.on('message', this.onMessage);
 	}
 
@@ -145,7 +152,7 @@ export class ReactionsBufferingService implements OnApplicationShutdown {
 	@bindThis
 	public async bake(): Promise<void> {
 		// 複数プロセスで同時に bake すると同じ差分を二重適用するため、ロックを取れたプロセスだけが処理する
-		const lockKey = `${this.config.redis.prefix}:reactionsBakeLock`;
+		const lockKey = 'reactionsBakeLock';
 		const locked = await this.redisForReactions.set(lockKey, '1', 'EX', 600, 'NX');
 		if (locked !== 'OK') return;
 
@@ -188,23 +195,28 @@ export class ReactionsBufferingService implements OnApplicationShutdown {
 			const deltas = Object.entries(buffered.deltas);
 			if (deltas.length === 0) continue;
 
-			const expressions: string[] = [];
-			const parameters: Record<string, string | number> = {};
-			for (const [i, [reaction, count]] of deltas.entries()) {
-				expressions.push(`jsonb_set("reactions", ARRAY[:reaction${i}], (COALESCE("reactions"->>:reaction${i}, '0')::int + :count${i})::text::jsonb)`);
-				parameters[`reaction${i}`] = reaction;
-				parameters[`count${i}`] = count;
-			}
-			const sql = expressions.join(' || ');
+			try {
+				const expressions: string[] = [];
+				const parameters: Record<string, string | number> = {};
+				for (const [i, [reaction, count]] of deltas.entries()) {
+					expressions.push(`jsonb_set("reactions", ARRAY[:reaction${i}], (COALESCE("reactions"->>:reaction${i}, '0')::int + :count${i})::text::jsonb)`);
+					parameters[`reaction${i}`] = reaction;
+					parameters[`count${i}`] = count;
+				}
+				const sql = expressions.join(' || ');
 
-			await this.notesRepository.createQueryBuilder().update()
-				.set({
-					reactions: () => sql,
-					reactionAndUserPairCache: buffered.pairs.map(x => x.join('/')),
-				})
-				.where('id = :id', { id: noteId })
-				.setParameters(parameters)
-				.execute();
+				await this.notesRepository.createQueryBuilder().update()
+					.set({
+						reactions: () => sql,
+						reactionAndUserPairCache: buffered.pairs.map(x => x.join('/')),
+					})
+					.where('id = :id', { id: noteId })
+					.setParameters(parameters)
+					.execute();
+			} catch (err) {
+				// 1件の失敗で残りのノートの差分を失わないようにする
+				this.logger.warn(`Failed to bake reactions for ${noteId}: ${err}`);
+			}
 		}
 	}
 

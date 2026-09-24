@@ -144,6 +144,20 @@ export class ReactionsBufferingService implements OnApplicationShutdown {
 	// TODO: scanは重い可能性があるので、別途 bufferedNoteIds を直接Redis上に持っておいてもいいかもしれない
 	@bindThis
 	public async bake(): Promise<void> {
+		// 複数プロセスで同時に bake すると同じ差分を二重適用するため、ロックを取れたプロセスだけが処理する
+		const lockKey = `${this.config.redis.prefix}:reactionsBakeLock`;
+		const locked = await this.redisForReactions.set(lockKey, '1', 'EX', 600, 'NX');
+		if (locked !== 'OK') return;
+
+		try {
+			await this.bakeInner();
+		} finally {
+			await this.redisForReactions.del(lockKey);
+		}
+	}
+
+	@bindThis
+	private async bakeInner(): Promise<void> {
 		const bufferedNoteIds = [];
 		let cursor = '0';
 		do {
@@ -183,7 +197,7 @@ export class ReactionsBufferingService implements OnApplicationShutdown {
 			}
 			const sql = expressions.join(' || ');
 
-			this.notesRepository.createQueryBuilder().update()
+			await this.notesRepository.createQueryBuilder().update()
 				.set({
 					reactions: () => sql,
 					reactionAndUserPairCache: buffered.pairs.map(x => x.join('/')),

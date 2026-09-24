@@ -115,21 +115,21 @@ export class DeliverProcessorService {
 			this.federatedInstanceService.fetchOrRegister(host).then(i => {
 				if (!i.isNotResponding) {
 					// キャッシュ由来の古い状態で上書きしないよう、条件付きで更新する
-					this.federatedInstanceService.updateIf({ id: i.id, isNotResponding: false }, {
+					this.federatedInstanceService.updateIf(i.id, { isNotResponding: false }, {
 						isNotResponding: true,
 						notRespondingSince: new Date(),
 					});
 				} else if (i.notRespondingSince) {
 					// 1週間以上不通ならサスペンド
 					if (i.suspensionState === 'none' && i.notRespondingSince.getTime() <= Date.now() - 1000 * 60 * 60 * 24 * 7) {
-						this.federatedInstanceService.updateIf({ id: i.id, suspensionState: 'none' }, {
+						this.federatedInstanceService.updateIf(i.id, { suspensionState: 'none' }, {
 							suspensionState: 'autoSuspendedForNotResponding',
 						});
 					}
 				} else {
 					// isNotRespondingがtrueでnotRespondingSinceがnullの場合はnotRespondingSinceをセット
 					// notRespondingSinceは新たな機能なので、それ以前のデータにはnotRespondingSinceがない場合がある
-					this.federatedInstanceService.updateIf({ id: i.id, isNotResponding: true, notRespondingSince: IsNull() }, {
+					this.federatedInstanceService.updateIf(i.id, { isNotResponding: true, notRespondingSince: IsNull() }, {
 						notRespondingSince: new Date(),
 					});
 				}
@@ -148,7 +148,7 @@ export class DeliverProcessorService {
 					if (job.data.isSharedInbox && res.statusCode === 410) {
 						this.federatedInstanceService.fetchOrRegister(host).then(i => {
 							// 手動サスペンドは上書きしない
-							this.federatedInstanceService.updateIf({ id: i.id, suspensionState: Not('manuallySuspended') }, {
+							this.federatedInstanceService.updateIf(i.id, { suspensionState: Not('manuallySuspended') }, {
 								suspensionState: 'goneSuspended',
 							});
 						}).catch(err => {

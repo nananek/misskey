@@ -114,8 +114,15 @@ export class FederatedInstanceService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async updateIf(criteria: FindOptionsWhere<MiInstance>, data: Partial<MiInstance>): Promise<void> {
-		await this.instancesRepository.update(criteria, data);
+	public async updateIf(id: MiInstance['id'], criteria: FindOptionsWhere<MiInstance>, data: Partial<MiInstance>): Promise<void> {
+		const result = await this.instancesRepository.update({ ...criteria, id }, data);
+
+		if (result.affected) {
+			const updated = await this.instancesRepository.findOneBy({ id });
+			if (updated != null) {
+				this.federatedInstanceCache.set(updated.host, updated);
+			}
+		}
 	}
 
 	@bindThis

@@ -197,7 +197,9 @@ export class NotificationService implements OnApplicationShutdown {
 
 			if (type === 'follow') this.emailNotificationFollow(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
 			if (type === 'receiveFollowRequest') this.emailNotificationReceiveFollowRequest(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
-		}, () => { /* aborted, ignore it */ });
+		}, () => { /* aborted, ignore it */ }).catch(() => {
+			/* 未読通知イベントは best-effort。DB切断などで失敗しても通知自体には影響しない */
+		});
 
 		return notification;
 	}

@@ -619,11 +619,19 @@ export class UserFollowingService implements OnModuleInit {
 	): Promise<void> {
 		const requests = await this.followRequestsRepository.findBy({
 			followeeId: user.id,
+		}).catch(err => {
+			logger.warn(`Failed to fetch follow requests: ${err}`);
+			return [];
 		});
 
 		for (const request of requests) {
-			const follower = await this.usersRepository.findOneByOrFail({ id: request.followerId });
-			await this.acceptFollowRequest(user, follower);
+			try {
+				const follower = await this.usersRepository.findOneByOrFail({ id: request.followerId });
+				await this.acceptFollowRequest(user, follower);
+			} catch (err) {
+				// 1件の失敗で残りの承認が止まらないようにする
+				logger.warn(`Failed to accept follow request from ${request.followerId}: ${err}`);
+			}
 		}
 	}
 

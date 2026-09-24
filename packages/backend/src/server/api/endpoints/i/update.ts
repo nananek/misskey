@@ -547,7 +547,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			// 鍵垢を解除したとき、溜まっていたフォローリクエストがあるならすべて承認
 			if (user.isLocked && ps.isLocked === false) {
-				await this.userFollowingService.acceptAllFollowRequests(user);
+				// 応答を待たせない（失敗は acceptAllFollowRequests 内でログに残す）
+				void this.userFollowingService.acceptAllFollowRequests(user);
 			}
 
 			// フォロワーにUpdateを配信

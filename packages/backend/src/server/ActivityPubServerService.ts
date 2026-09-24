@@ -589,6 +589,13 @@ export class ActivityPubServerService {
 				reply.code(500);
 				return;
 			}
+
+			// 連合ポリシーで許可されていないホストのアクターは公開しない
+			if (!this.utilityService.isFederationAllowedHost(user.host)) {
+				reply.code(404);
+				return;
+			}
+
 			reply.redirect(user.uri, 301);
 			return;
 		}
@@ -686,6 +693,13 @@ export class ActivityPubServerService {
 					reply.code(500);
 					return;
 				}
+
+				// 連合ポリシーで許可されていないホストのノートは公開しない
+				if (!this.utilityService.isFederationAllowedHost(note.userHost)) {
+					reply.code(404);
+					return;
+				}
+
 				reply.redirect(note.uri);
 				return;
 			}

@@ -43,6 +43,14 @@ export class PollService {
 
 	@bindThis
 	public async vote(user: MiUser, note: MiNote, choice: number) {
+		// Check blocking（トランザクション外で行い、poll 行ロックを保持したまま別接続を使わないようにする）
+		if (note.userId !== user.id) {
+			const blocked = await this.userBlockingService.checkBlocked(note.userId, user.id);
+			if (blocked) {
+				throw new Error('blocked');
+			}
+		}
+
 		// 同時投票による重複カウントを防ぐため、poll 行をロックしてトランザクション内で処理する
 		await this.pollsRepository.manager.transaction(async (manager) => {
 			const poll = await manager.getRepository(MiPoll).findOne({
@@ -54,14 +62,6 @@ export class PollService {
 
 			// Check whether is valid choice
 			if (poll.choices[choice] == null) throw new Error('invalid choice param');
-
-			// Check blocking
-			if (note.userId !== user.id) {
-				const blocked = await this.userBlockingService.checkBlocked(note.userId, user.id);
-				if (blocked) {
-					throw new Error('blocked');
-				}
-			}
 
 			// if already voted
 			const exist = await manager.getRepository(MiPollVote).findBy({

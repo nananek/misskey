@@ -5,7 +5,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import * as Bull from 'bullmq';
-import { Not } from 'typeorm';
+import { IsNull, Not } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { InstancesRepository, MiMeta } from '@/models/_.js';
 import type Logger from '@/logger.js';
@@ -114,21 +114,22 @@ export class DeliverProcessorService {
 			// Update instance stats
 			this.federatedInstanceService.fetchOrRegister(host).then(i => {
 				if (!i.isNotResponding) {
-					this.federatedInstanceService.update(i.id, {
+					// キャッシュ由来の古い状態で上書きしないよう、条件付きで更新する
+					this.federatedInstanceService.updateIf({ id: i.id, isNotResponding: false }, {
 						isNotResponding: true,
 						notRespondingSince: new Date(),
 					});
 				} else if (i.notRespondingSince) {
 					// 1週間以上不通ならサスペンド
 					if (i.suspensionState === 'none' && i.notRespondingSince.getTime() <= Date.now() - 1000 * 60 * 60 * 24 * 7) {
-						this.federatedInstanceService.update(i.id, {
+						this.federatedInstanceService.updateIf({ id: i.id, suspensionState: 'none' }, {
 							suspensionState: 'autoSuspendedForNotResponding',
 						});
 					}
 				} else {
 					// isNotRespondingがtrueでnotRespondingSinceがnullの場合はnotRespondingSinceをセット
 					// notRespondingSinceは新たな機能なので、それ以前のデータにはnotRespondingSinceがない場合がある
-					this.federatedInstanceService.update(i.id, {
+					this.federatedInstanceService.updateIf({ id: i.id, isNotResponding: true, notRespondingSince: IsNull() }, {
 						notRespondingSince: new Date(),
 					});
 				}
@@ -136,6 +137,8 @@ export class DeliverProcessorService {
 				if (this.meta.enableChartsForFederatedInstances) {
 					this.instanceChart.requestSent(i.host, false);
 				}
+			}).catch(err => {
+				this.logger.error(`Failed to update instance stats: ${err}`);
 			});
 
 			if (res instanceof StatusError) {
@@ -144,9 +147,12 @@ export class DeliverProcessorService {
 					// 相手が閉鎖していることを明示しているため、配送停止する
 					if (job.data.isSharedInbox && res.statusCode === 410) {
 						this.federatedInstanceService.fetchOrRegister(host).then(i => {
-							this.federatedInstanceService.update(i.id, {
+							// 手動サスペンドは上書きしない
+							this.federatedInstanceService.updateIf({ id: i.id, suspensionState: Not('manuallySuspended') }, {
 								suspensionState: 'goneSuspended',
 							});
+						}).catch(err => {
+							this.logger.error(`Failed to update instance stats: ${err}`);
 						});
 						throw new Bull.UnrecoverableError(`${host} is gone`);
 					}

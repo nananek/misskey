@@ -5,6 +5,7 @@
 
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 import * as Redis from 'ioredis';
+import type { FindOptionsWhere } from 'typeorm';
 import type { InstancesRepository } from '@/models/_.js';
 import type { MiInstance } from '@/models/Instance.js';
 import { MemoryKVCache, RedisKVCache } from '@/misc/cache.js';
@@ -110,6 +111,11 @@ export class FederatedInstanceService implements OnApplicationShutdown {
 			});
 
 		this.federatedInstanceCache.set(result.host, result);
+	}
+
+	@bindThis
+	public async updateIf(criteria: FindOptionsWhere<MiInstance>, data: Partial<MiInstance>): Promise<void> {
+		await this.instancesRepository.update(criteria, data);
 	}
 
 	@bindThis

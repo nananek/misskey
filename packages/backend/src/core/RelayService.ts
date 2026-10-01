@@ -74,42 +74,24 @@ export class RelayService {
 	}
 
 	@bindThis
-	public async relayAccepted(id: string, actor: { host: string | null }): Promise<string> {
-		return await this.updateRelayStatus(id, actor, 'accepted');
+	public async relayAccepted(id: string, actor: { inbox: string | null; sharedInbox: string | null; }): Promise<string> {
+		return JSON.stringify(await this.updateRequestingRelayStatus(id, actor, 'accepted'));
 	}
 
 	@bindThis
-	public async relayRejected(id: string, actor: { host: string | null }): Promise<string> {
-		return await this.updateRelayStatus(id, actor, 'rejected');
+	public async relayRejected(id: string, actor: { inbox: string | null; sharedInbox: string | null; }): Promise<string> {
+		return JSON.stringify(await this.updateRequestingRelayStatus(id, actor, 'rejected'));
 	}
 
 	@bindThis
-	private async updateRelayStatus(id: string, actor: { host: string | null }, status: 'accepted' | 'rejected'): Promise<string> {
+	private async updateRequestingRelayStatus(id: string, actor: { inbox: string | null; sharedInbox: string | null; }, status: 'accepted' | 'rejected') {
 		const relay = await this.relaysRepository.findOneBy({ id });
+		if (relay == null) return { affected: 0 };
+		// 応答してきたのがリレー自身でなければ受け付けない
+		if (actor.inbox !== relay.inbox && actor.sharedInbox !== relay.inbox) return { affected: 0 };
 
-		if (relay == null) return 'skip: relay not found';
-		if (!this.isRelaySigner(relay.inbox, actor)) return 'skip: invalid relay signer';
-
-		// 状態遷移は条件付き更新で行い、並行して届いた Accept / Reject の後勝ちを防ぐ
-		const result = await this.relaysRepository.update({ id, status: 'requesting' }, {
-			status,
-		});
-
-		if (result.affected === 0) return 'skip: relay is not requesting';
-
-		return JSON.stringify(result);
-	}
-
-	@bindThis
-	private isRelaySigner(inbox: string, actor: { host: string | null }): boolean {
-		if (actor.host == null) return false;
-
-		try {
-			const relayHost = new URL(inbox);
-			return relayHost.host === actor.host || relayHost.hostname === actor.host;
-		} catch {
-			return false;
-		}
+		const result = await this.relaysRepository.update({ id, status: 'requesting' }, { status });
+		return { affected: result.affected ?? 0 };
 	}
 
 	@bindThis

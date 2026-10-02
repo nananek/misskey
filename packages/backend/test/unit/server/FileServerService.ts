@@ -612,6 +612,7 @@ describe('FileServerService', () => {
 				'/files/%2e%2e/x',
 				'/files/.%2e/x',
 				'/files/a%5cb/x',
+				'/files/..%3b/x',
 			]) {
 				const res = await fastify.inject({
 					method: 'GET',
@@ -626,11 +627,11 @@ describe('FileServerService', () => {
 		test('GET /files/:key/* 正規 key は再エンコードした Location にリダイレクトする', async () => {
 			const res = await fastify.inject({
 				method: 'GET',
-				url: '/files/a%3bb%20%E3%81%82/extra',
+				url: '/files/a%20%E3%81%82/extra',
 			});
 
 			expect(res.statusCode).toBe(301);
-			expect(res.headers.location).toBe(`${config.url}/files/a%3Bb%20%E3%81%82`);
+			expect(res.headers.location).toBe(`${config.url}/files/a%20%E3%81%82`);
 		});
 	});
 

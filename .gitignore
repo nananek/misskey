@@ -83,3 +83,7 @@ vite.config.local-dev.ts.timestamp-*
 
 # Affinity
 *.af~lock~
+
+# local-only
+audit/
+.claude/skills/_local

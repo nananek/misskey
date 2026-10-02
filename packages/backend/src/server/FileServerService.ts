@@ -95,7 +95,14 @@ export class FileServerService {
 					.catch(err => this.errorHandler(request, reply, err));
 			});
 			fastify.get<{ Params: { key: string; } }>('/files/:key/*', async (request, reply) => {
-				return await reply.redirect(`${this.config.url}/files/${request.params.key}`, 301);
+				const key = request.params.key;
+				// The router percent-decodes this segment. A separator, a dot-segment or a
+				// control byte that decoded out of the URL must never reach the Location, and
+				// anything else is re-encoded so the canonical key is what a client follows.
+				if (key.length === 0 || key === '.' || key === '..' || /[\/\\\u0000-\u001f\u007f]/.test(key)) {
+					return reply.code(404).send();
+				}
+				return await reply.redirect(`${this.config.url}/files/${encodeURIComponent(key)}`, 301);
 			});
 			done();
 		});

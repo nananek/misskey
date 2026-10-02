@@ -605,6 +605,33 @@ describe('FileServerService', () => {
 			expect(res.headers.location).toBe(`${config.url}/files/testkey`);
 			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
 		});
+
+		test('GET /files/:key/* デコード後に区切りや dot-segment になる key は 404', async () => {
+			for (const url of [
+				'/files/..%2f..%2fetc%2fpasswd/x',
+				'/files/%2e%2e/x',
+				'/files/.%2e/x',
+				'/files/a%5cb/x',
+			]) {
+				const res = await fastify.inject({
+					method: 'GET',
+					url,
+				});
+
+				expect(res.statusCode).toBe(404);
+				expect(res.headers.location).toBeUndefined();
+			}
+		});
+
+		test('GET /files/:key/* 正規 key は再エンコードした Location にリダイレクトする', async () => {
+			const res = await fastify.inject({
+				method: 'GET',
+				url: '/files/a%3bb%20%E3%81%82/extra',
+			});
+
+			expect(res.statusCode).toBe(301);
+			expect(res.headers.location).toBe(`${config.url}/files/a%3Bb%20%E3%81%82`);
+		});
 	});
 
 	describe('GET /proxy/:url*', () => {

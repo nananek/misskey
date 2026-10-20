@@ -15,6 +15,33 @@ import type { Config } from '@/config.js';
 import type { MiMeta } from '@/models/_.js';
 import type { ClientLoggerService } from '@/server/web/ClientLoggerService.js';
 
+function createServer(meta: MiMeta) {
+	const htmlTemplateService = mockDeep<HtmlTemplateService>();
+	const clientLoggerService = mockDeep<ClientLoggerService>();
+	htmlTemplateService.getCommonData.mockResolvedValue({
+		config: { url: 'https://example.test' } as Config,
+		version: 'test', langs: [], instanceName: 'Test', instanceUrl: 'https://example.test',
+		icon: null, appleTouchIcon: null, themeColor: null,
+		serverErrorImageUrl: '', infoImageUrl: '', notFoundImageUrl: '',
+		now: 0, federationEnabled: true, frontendViteFiles: null,
+		frontendBootloaderJs: null, frontendBootloaderCss: null,
+		frontendEmbedViteFiles: null, frontendEmbedBootloaderJs: null, frontendEmbedBootloaderCss: null,
+	});
+	const service = new ClientServerService(
+		{ url: 'https://example.test', rootDir: process.cwd() } as Config,
+		meta,
+		mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
+		mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
+		mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
+		mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
+		htmlTemplateService,
+		clientLoggerService,
+	);
+	const server = Fastify();
+	server.register(service.createServer);
+	return { server, clientLoggerService };
+}
+
 describe('HTML descriptions as plain text', () => {
 	it.each([
 		['Misskey server', 'Misskey server'],
@@ -52,30 +79,8 @@ describe('HTML descriptions as plain text', () => {
 		[null, undefined],
 	])('renders instance metadata through ClientServerService for %s', async (html, expected) => {
 		const meta = { description: html, name: 'Test', bannerUrl: null } as MiMeta;
-		const htmlTemplateService = mockDeep<HtmlTemplateService>();
-		const clientLoggerService = mockDeep<ClientLoggerService>();
-		htmlTemplateService.getCommonData.mockResolvedValue({
-			config: { url: 'https://example.test' } as Config,
-			version: 'test', langs: [], instanceName: 'Test', instanceUrl: 'https://example.test',
-			icon: null, appleTouchIcon: null, themeColor: null,
-			serverErrorImageUrl: '', infoImageUrl: '', notFoundImageUrl: '',
-			now: 0, federationEnabled: true, frontendViteFiles: null,
-			frontendBootloaderJs: null, frontendBootloaderCss: null,
-			frontendEmbedViteFiles: null, frontendEmbedBootloaderJs: null, frontendEmbedBootloaderCss: null,
-		});
-		const service = new ClientServerService(
-			{ url: 'https://example.test', rootDir: process.cwd() } as Config,
-			meta,
-			mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
-			mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
-			mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
-			mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(), mockDeep(),
-			htmlTemplateService,
-			clientLoggerService,
-		);
-		const server = Fastify();
+		const { server, clientLoggerService } = createServer(meta);
 		try {
-			server.register(service.createServer);
 			const response = await server.inject({ method: 'GET', url: '/' });
 			expect(response.statusCode, JSON.stringify(clientLoggerService.logger.error.mock.calls)).toBe(200);
 			const document = parse(response.body);
@@ -83,6 +88,46 @@ describe('HTML descriptions as plain text', () => {
 			expect(document.querySelector('meta[property="og:description"]')?.getAttribute('content')).toBe(expected ?? defaultDescription);
 			expect(response.body).not.toContain('&lt;span');
 			expect(response.body).not.toContain('&lt;br');
+		} finally {
+			await server.close();
+		}
+	});
+});
+
+describe('ClientServerService catch-all', () => {
+	// Above Fastify's default maxParamLength (100): the route misses and the
+	// request lands on the catch-all instead of the per-route handler.
+	const unmatchedPath = `/notes/${'A'.repeat(120)}`;
+
+	it.each([
+		['text/html', 200],
+		['text/html,application/xhtml+xml', 200],
+		['application/activity+json', 404],
+		['*/*', 404],
+		['text/html;q=0', 404],
+	])('answers Accept %s with %i', async (accept, status) => {
+		const { server } = createServer({ description: null, name: 'Test', bannerUrl: null } as MiMeta);
+		try {
+			const response = await server.inject({
+				method: 'GET',
+				url: unmatchedPath,
+				headers: { accept },
+			});
+			expect(response.statusCode).toBe(status);
+			if (status === 200) {
+				expect(response.headers['content-type']).toContain('text/html');
+			}
+		} finally {
+			await server.close();
+		}
+	});
+
+	it('renders the SPA when the caller sends no Accept header', async () => {
+		const { server } = createServer({ description: null, name: 'Test', bannerUrl: null } as MiMeta);
+		try {
+			const response = await server.inject({ method: 'GET', url: unmatchedPath });
+			expect(response.statusCode).toBe(200);
+			expect(response.headers['content-type']).toContain('text/html');
 		} finally {
 			await server.close();
 		}

@@ -12,6 +12,7 @@ import { In, IsNull } from 'typeorm';
 import fastifyStatic from '@fastify/static';
 import fastifyProxy from '@fastify/http-proxy';
 import vary from 'vary';
+import accepts from 'accepts';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import * as Acct from '@/misc/acct.js';
@@ -64,7 +65,25 @@ import { CliPage } from './views/cli.js';
 import { FlushPage } from './views/flush.js';
 import { ErrorPage } from './views/error.js';
 
-import type { FastifyError, FastifyInstance, FastifyPluginOptions, FastifyReply } from 'fastify';
+import type { FastifyError, FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from 'fastify';
+
+/**
+ * Whether the caller explicitly asked for an HTML page.
+ *
+ * The catch-all below is the only route that renders HTML for a path it did
+ * not recognise. A caller that asks only for JSON — federation, API clients,
+ * or a public face that overwrites `Accept` — must not receive that page: a
+ * path that misses every route, for example a parameter longer than Fastify's
+ * `maxParamLength`, would otherwise turn into HTML on a JSON-only surface.
+ *
+ * No `Accept` header keeps the historical behaviour (render the SPA); only an
+ * explicitly non-HTML `Accept` is refused.
+ */
+function acceptsHtml(request: FastifyRequest): boolean {
+	const accept = request.headers.accept;
+	if (accept == null || accept.trim() === '') return true;
+	return /\btext\/html\b/i.test(accept) && accepts(request.raw).type(['html']) === 'html';
+}
 
 @Injectable()
 export class ClientServerService {
@@ -933,6 +952,10 @@ export class ClientServerService {
 
 		// Render base html for all requests
 		fastify.get('*', async (request, reply) => {
+			if (!acceptsHtml(request)) {
+				reply.code(404);
+				return;
+			}
 			return await renderBase(reply);
 		});
 

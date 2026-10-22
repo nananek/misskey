@@ -23,6 +23,7 @@
 		"restart": "pnpm build && pnpm start",
 		"dev": "pnpm compile-config && rolldown -c --watch",
 		"typecheck": "tsc --noEmit && tsc -p test --noEmit && tsc -p test-federation --noEmit",
+		"typecheck:tsrs": "tsrs --noEmit && tsrs -p test --noEmit && tsrs -p test-federation --noEmit",
 		"eslint": "eslint --quiet \"{src,test-federation}/**/*.ts\"",
 		"lint": "pnpm typecheck && pnpm eslint",
 		"test": "pnpm build:unit && cross-env NODE_ENV=test pnpm compile-config && vitest --config vitest.config.unit.ts",

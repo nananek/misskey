@@ -118,7 +118,12 @@ jobs:
         cache: 'pnpm'
     - run: pnpm i --frozen-lockfile
     - run: pnpm --filter "${{ matrix.workspace }}^..." run build
-    - run: pnpm --filter ${{ matrix.workspace }} run typecheck
+    # backend は Rust 実装の型チェッカー (tsrs) を使う。tsc と診断結果が一致することを確認済み。
+    # 対応バイナリが無い環境 (Windows / Intel macOS) ではローカルの `pnpm typecheck` (tsc) を使う。
+    - if: matrix.workspace == 'backend'
+      run: pnpm --filter backend run typecheck:tsrs
+    - if: matrix.workspace != 'backend'
+      run: pnpm --filter ${{ matrix.workspace }} run typecheck
 
   check-dts:
     needs: [pnpm_install]

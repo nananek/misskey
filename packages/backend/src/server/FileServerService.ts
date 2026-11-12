@@ -127,14 +127,15 @@ export class FileServerService {
 			return reply.sendFile('/dummy.png', this.assets);
 		}
 
-		// 失敗を共有キャッシュに残さない (一時的な上流エラーが max-age の間ずっと返り続ける)。
-		reply.header('Cache-Control', 'no-store');
-
 		if (err instanceof StatusError && (err.statusCode === 302 || err.isClientError)) {
+			// 呼び出し側に起因する 4xx / 302 は決定的な結果なので、従来どおり短くキャッシュしてよい。
+			reply.header('Cache-Control', 'max-age=300');
 			reply.code(err.statusCode);
 			return;
 		}
 
+		// 5xx は一時的な上流障害。共有キャッシュに残さない (max-age の間ずっと失敗が返り続ける)。
+		reply.header('Cache-Control', 'no-store');
 		reply.code(500);
 		return;
 	}

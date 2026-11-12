@@ -5,22 +5,18 @@
 
 process.env.NODE_ENV = 'test';
 
-import { beforeAll, describe, test, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { validateContentTypeSetAsActivityPub, validateContentTypeSetAsJsonLD } from '@/core/activitypub/misc/validator.js';
-import { signup, uploadFile, relativeFetch } from '../utils.js';
-import type * as misskey from 'misskey-js';
+import { relativeFetch } from '../utils.js';
+
+// この fork はドライブのファイルを本体から直接配信しない (内部向けにリダイレクトする) ため、
+// アップロードしたファイルの URL は content-type を持たない。content-type が確実に付く
+// 非 AP リソースとして、同梱の代打画像を使う。
+const nonApResource = '/files/app-default.jpg';
 
 describe('validateContentTypeSetAsActivityPub/JsonLD (deny case)', () => {
-	let alice: misskey.entities.SignupResponse;
-	let aliceUploadedFile: any;
-
-	beforeAll(async () => {
-		alice = await signup({ username: 'alice' });
-		aliceUploadedFile = await uploadFile(alice);
-	}, 1000 * 60 * 2);
-
 	test('ActivityStreams: ファイルはエラーになる', async () => {
-		const res = await relativeFetch(aliceUploadedFile.webpublicUrl);
+		const res = await relativeFetch(nonApResource);
 
 		function doValidate() {
 			validateContentTypeSetAsActivityPub(res);
@@ -30,7 +26,7 @@ describe('validateContentTypeSetAsActivityPub/JsonLD (deny case)', () => {
 	});
 
 	test('JSON-LD: ファイルはエラーになる', async () => {
-		const res = await relativeFetch(aliceUploadedFile.webpublicUrl);
+		const res = await relativeFetch(nonApResource);
 
 		function doValidate() {
 			validateContentTypeSetAsJsonLD(res);

@@ -152,7 +152,6 @@ COPY --chown=misskey:misskey ["packages/backend/ormconfig.js",              "./p
 COPY --chown=misskey:misskey ["packages/backend/migration",                 "./packages/backend/migration"]
 COPY --chown=misskey:misskey ["packages/backend/assets",                    "./packages/backend/assets"]
 COPY --chown=misskey:misskey ["packages/backend/src/server/assets",         "./packages/backend/src/server/assets"]
-COPY --chown=misskey:misskey ["packages/backend/scripts/compile_config.js", "./packages/backend/scripts/"]
 COPY --chown=misskey:misskey ["scripts/docker-start.js",                    "./scripts/"]
 COPY --chown=misskey:misskey ["healthcheck.js",                             "./"]
 

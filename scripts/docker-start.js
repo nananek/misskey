@@ -18,17 +18,14 @@ function run(args, opts) {
 	if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
-// Step 1: YAML → JSON 変換
-run(['scripts/compile_config.js'], { cwd: backendDir });
-
-// Step 2: TypeORM マイグレーション
+// Step 1: TypeORM マイグレーション
 // node_modules/.bin/typeorm はシェルスクリプトなので cli.js を直接呼ぶ
 // cwd=backendDir で ormconfig.js の migration/*.js 解決が正しく動く
 const typeormCli = resolve(backendDir, 'node_modules/typeorm/cli.js');
 if (!existsSync(typeormCli)) throw new Error(`typeorm CLI not found: ${typeormCli}`);
 run([typeormCli, 'migration:run', '-d', './ormconfig.js'], { cwd: backendDir });
 
-// Step 3: サーバー起動
+// Step 2: サーバー起動
 // tini (ENTRYPOINT) がシグナル管理するので spawn で子プロセスへ転送する
 const entryJs = resolve(backendDir, 'built/entry.js');
 if (!existsSync(entryJs)) throw new Error(`entry.js not found: ${entryJs}`);

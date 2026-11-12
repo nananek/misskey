@@ -96,11 +96,11 @@ describe('Webリソース', () => {
 	}, 1000 * 60 * 2);
 
 	describe.each([
-		{ path: '/', type: HTML },
-		{ path: '/docs/ja-JP/about', type: HTML }, // "指定されたURLに該当するページはありませんでした。"
+		{ path: '/', type: HTML, accept: PREFER_HTML },
+		{ path: '/docs/ja-JP/about', type: HTML, accept: PREFER_HTML }, // "指定されたURLに該当するページはありませんでした。"
 		{ path: '/api-doc', type: HTML },
 		{ path: '/api.json', type: JSON_UTF8 },
-		{ path: '/api-console', type: HTML },
+		{ path: '/api-console', type: HTML, accept: PREFER_HTML },
 		{ path: '/_info_card_', type: HTML },
 		{ path: '/bios', type: HTML },
 		{ path: '/cli', type: HTML },
@@ -323,6 +323,7 @@ describe('Webリソース', () => {
 	describe('/users/inbox', () => {
 		test('がGETできる。(POST専用だけど4xx/5xxにならずHTMLが返ってくる)', async () => await ok({
 			path: '/inbox',
+			accept: PREFER_HTML,
 		}));
 
 		// test.todo('POSTできる？');
@@ -333,6 +334,7 @@ describe('Webリソース', () => {
 
 		test('がGETできる。(POST専用だけど4xx/5xxにならずHTMLが返ってくる)', async () => await ok({
 			path: path(alice.id),
+			accept: PREFER_HTML,
 		}));
 
 		// test.todo('POSTできる？');

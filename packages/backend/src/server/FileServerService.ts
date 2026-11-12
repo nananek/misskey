@@ -127,15 +127,22 @@ export class FileServerService {
 			return reply.sendFile('/dummy.png', this.assets);
 		}
 
-		if (err instanceof StatusError && (err.statusCode === 302 || err.isClientError)) {
-			// 呼び出し側に起因する 4xx / 302 は決定的な結果なので、従来どおり短くキャッシュしてよい。
+		if (err instanceof StatusError && err.statusCode === 302) {
+			// 内部への意図的な誘導は失敗ではない。短時間だけキャッシュしてよい。
 			reply.header('Cache-Control', 'max-age=300');
+			reply.code(302);
+			return;
+		}
+
+		// 失敗応答は共有キャッシュに残さない。4xx を残すと、UA を欠いた 1 回の要求で
+		// 同じ URL が max-age の間ずっと 400/403 になり、他の呼び出し元も巻き込む。
+		reply.header('Cache-Control', 'no-store');
+
+		if (err instanceof StatusError && err.isClientError) {
 			reply.code(err.statusCode);
 			return;
 		}
 
-		// 5xx は一時的な上流障害。共有キャッシュに残さない (max-age の間ずっと失敗が返り続ける)。
-		reply.header('Cache-Control', 'no-store');
 		reply.code(500);
 		return;
 	}

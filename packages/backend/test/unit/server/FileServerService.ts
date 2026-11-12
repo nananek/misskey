@@ -660,7 +660,7 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(403);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.headers['cache-control']).toBe('no-store');
 		});
 
 		test('GET /proxy/:url* origin 指定時は User-Agent 必須を検証する', async () => {
@@ -673,7 +673,7 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(400);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.headers['cache-control']).toBe('no-store');
 			expect(res.headers.location).toBeUndefined();
 			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
 		});
@@ -688,7 +688,7 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(404);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.headers['cache-control']).toBe('no-store');
 		});
 
 		test('GET /proxy/:url* 非画像は 403 を返す', async () => {
@@ -701,7 +701,7 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(403);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.headers['cache-control']).toBe('no-store');
 		});
 
 		test('GET /proxy/:url* emoji static で webp を返す', async () => {
@@ -789,7 +789,7 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(404);
-			expect(res.headers['cache-control']).toBe('max-age=300');
+			expect(res.headers['cache-control']).toBe('no-store');
 		});
 
 		test('GET /proxy/:url* 画像をそのまま返す', async () => {

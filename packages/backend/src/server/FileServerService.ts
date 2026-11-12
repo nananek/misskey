@@ -122,11 +122,13 @@ export class FileServerService {
 	private async errorHandler(request: FastifyRequest<{ Params?: { [x: string]: any }; Querystring?: { [x: string]: any }; }>, reply: FastifyReply, err?: any) {
 		this.logger.error(`${err}`);
 
-		reply.header('Cache-Control', 'max-age=300');
-
 		if (request.query && 'fallback' in request.query) {
+			reply.header('Cache-Control', 'max-age=300');
 			return reply.sendFile('/dummy.png', this.assets);
 		}
+
+		// 失敗を共有キャッシュに残さない (一時的な上流エラーが max-age の間ずっと返り続ける)。
+		reply.header('Cache-Control', 'no-store');
 
 		if (err instanceof StatusError && (err.statusCode === 302 || err.isClientError)) {
 			reply.code(err.statusCode);

@@ -134,8 +134,12 @@ export class NodeinfoServerService {
 
 		const cache = new MemorySingleCache<Awaited<ReturnType<typeof nodeinfo2>>>(1000 * 60 * 10); // 10m
 
+		// 2.1 と 2.0 は同じ文書を共有する。キャッシュには version 非依存の文書を 1 つだけ持ち、
+		// 各レスポンスは複製して組み立てる (2.0 の組み立てが 2.1 の内容を書き換えないようにする)。
+		const fetchBase = () => cache.fetch(() => nodeinfo2(21));
+
 		fastify.get(nodeinfo2_1path, async (request, reply) => {
-			const base = await cache.fetch(() => nodeinfo2(21));
+			const base = await fetchBase();
 
 			reply
 				.type(
@@ -150,9 +154,12 @@ export class NodeinfoServerService {
 		});
 
 		fastify.get(nodeinfo2_0path, async (request, reply) => {
-			const base = await cache.fetch(() => nodeinfo2(20));
+			// キャッシュ済みの文書は共有なので、複製してから version 固有の差分を適用する
+			const cached = await fetchBase();
+			const base = { ...cached, software: { ...cached.software } };
 
-			delete (base as any).software.repository;
+			delete base.software.repository;
+			base.software.homepage = nodeinfo_homepage;
 
 			reply
 				.type(

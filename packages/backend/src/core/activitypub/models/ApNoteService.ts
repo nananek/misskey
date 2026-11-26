@@ -75,7 +75,6 @@ export class ApNoteService {
 		private pollService: PollService,
 		private noteEntityService: NoteEntityService,
 		private noteCreateService: NoteCreateService,
-		private noteEntityService: NoteEntityService,
 		private apDbResolverService: ApDbResolverService,
 		private apLoggerService: ApLoggerService,
 	) {
